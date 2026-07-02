@@ -873,7 +873,7 @@
                 const canvasOverlayA = document.createElement('canvas'); canvasOverlayA.id = 'canvas-overlay-A'; canvasOverlayA.className = 'overlay-canvas'; canvasOverlayA.height = vpA.height; canvasOverlayA.width = vpA.width; wrapperContent.appendChild(canvasOverlayA);
                 pageA.render({ canvasContext: canvasOverlayA.getContext('2d'), viewport: vpA });
             }
-            if (compareDoc2 && currentComparePage <= compareDoc2.numPages) {
+if (compareDoc2 && currentComparePage <= compareDoc2.numPages) {
                 const pageB = await compareDoc2.getPage(currentComparePage); if (taskId !== compareRenderTaskId) return;
                 const vpB = pageB.getViewport({ scale: scaleFactor });
                 let canvasB = document.createElement('canvas'); canvasB.height = vpB.height; canvasB.width = vpB.width; pane2.appendChild(canvasB);
