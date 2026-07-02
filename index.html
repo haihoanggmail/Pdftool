@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Suite Premium - For Hạnh Dương</title>
+    <title>PDF Suite by Hải Hoàng 09-1800-1944</title>
     <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     
@@ -440,7 +440,17 @@
 }
 
         function updateWatermarkStyles() {
-            const text = document.getElementById('wm-text').value;
+            <!--const text = document.getElementById('wm-text').value;-->
+			const input = document.getElementById('wm-text');
+
+			// Tự động bỏ dấu
+			const text = removeVietnameseTones(input.value);
+
+			// Nếu người dùng nhập có dấu thì cập nhật lại ô nhập
+			if (input.value !== text) {
+				input.value = text;
+			}
+
             const size = document.getElementById('wm-size').value + "px";
             const color = document.getElementById('wm-color').value;
             const rotation = document.getElementById('wm-rotation').value + "deg";
@@ -711,7 +721,8 @@
             const copiedPages = await mergedPdfDoc.copyPages(originalDoc, pageOrder);
             
             const wmEnabled = document.getElementById('wm-enable').checked;
-            const wmText = document.getElementById('wm-text').value;
+            <!--const wmText = document.getElementById('wm-text').value;-->
+			const wmText = removeVietnameseTones(document.getElementById('wm-text').value);
             const wmSize = parseInt(document.getElementById('wm-size').value);
             const wmColorHex = document.getElementById('wm-color').value;
             const wmRotationDeg = parseInt(document.getElementById('wm-rotation').value);
@@ -727,31 +738,49 @@
             else if (isBold) chosenFont = await mergedPdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBold);
             else if (isItalic) chosenFont = await mergedPdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaOblique);
 
-            copiedPages.forEach((page, idx) => {
-                // Xử lý góc xoay giấy trước
-                page.setRotation(PDFLib.degrees(pageRotations[idx]));
-                
-                // Nếu bật đóng dấu bản quyền
-                if (wmEnabled && wmText.trim() !== "") {
-                    const { width, height } = page.getSize();
-                    
-                    // Tính toán vị trí x, y tuyệt đối dựa trên tỷ lệ % kéo thả trên web
-                    let pdfX = (wmRelativeLeft / 100) * width;
-                    // PDF tính tọa độ từ góc trái dưới đi lên, nên phải đảo ngược trục Y
-                    let pdfY = height - ((wmRelativeTop / 100) * height);
 
-                    page.drawText(wmText, {
-                        x: pdfX,
-                        y: pdfY,
-                        size: wmSize,
-                        font: chosenFont,
-                        color: PDFLib.rgb(rgbColor.r, rgbColor.g, rgbColor.b),
-                        rotate: PDFLib.degrees(wmRotationDeg),
-                        opacity: wmOpacity,
-                    });
-                }
-                mergedPdfDoc.addPage(page);
-            });
+copiedPages.forEach((page, idx) => {
+    // Lấy góc xoay gốc của trang giấy từ mảng lưu trữ
+    const currentPageRotation = pageRotations[idx] || 0;
+    
+    // BƯỚC 1: Tạm thời đưa góc xoay của trang về 0 độ để đóng dấu phẳng chuẩn 100% như Web
+    page.setRotation(PDFLib.degrees(0));
+    
+    if (wmEnabled && wmText.trim() !== "") {
+        const { width, height } = page.getSize();
+        
+        // Tính tọa độ X, Y tuyệt đối theo tỉ lệ % từ giao diện Web
+        let pdfX = (wmRelativeLeft / 100) * width;
+        let pdfY = height - ((wmRelativeTop / 100) * height); // Đảo trục Y cho PDF
+
+        // BƯỚC 2: Kiểm tra nếu trang gốc bị xoay 90 hoặc 270 độ (đổi chiều dọc/ngang)
+        // Ta cần hoán đổi vị trí X và Y tương ứng để không bị lệch tâm
+        if (currentPageRotation === 90 || currentPageRotation === 270) {
+            pdfX = (wmRelativeTop / 100) * width;
+            pdfY = height - ((wmRelativeLeft / 100) * height);
+        }
+
+        // BƯỚC 3: Vẽ chữ với đúng góc xoay người dùng nhập (Đổi dấu góc xoay nếu cần)
+        // Trong PDF, góc dương là quay ngược chiều kim đồng hồ, nếu trên Web bạn thấy ngược,
+        // chỉ cần thêm dấu trừ (-) trước wmRotationDeg là xong.
+        let finalRotation = -wmRotationDeg; 
+
+        page.drawText(wmText, {
+            x: pdfX,
+            y: pdfY,
+            size: wmSize,
+            font: chosenFont,
+            color: PDFLib.rgb(rgbColor.r, rgbColor.g, rgbColor.b),
+            rotate: PDFLib.degrees(finalRotation), 
+            opacity: wmOpacity,
+        });
+    }
+    
+    // BƯỚC 4: Cuối cùng mới xoay toàn bộ trang giấy (bao gồm cả chữ vừa vẽ) về đúng hướng của nó
+    page.setRotation(PDFLib.degrees(currentPageRotation));
+    
+    mergedPdfDoc.addPage(page);
+});
 
             const modifiedPdfBytes = await mergedPdfDoc.save();
             const blob = new Blob([modifiedPdfBytes], { type: "application/pdf" });
@@ -891,6 +920,14 @@ if (compareDoc2 && currentComparePage <= compareDoc2.numPages) {
             target.scrollTop = source.scrollTop; target.scrollLeft = source.scrollLeft;
             setTimeout(() => { isSyncingScroll = false; }, 20);
         }
+		
+		function removeVietnameseTones(str) {
+    return str.normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/đ/g, "d")
+              .replace(/Đ/g, "D");
+}
+
     </script>
 </body>
 </html>
