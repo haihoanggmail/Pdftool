@@ -47,16 +47,16 @@
             box-sizing: border-box; gap: 15px;
         }
 
-        .left-panel { width: 320px; display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; overflow-y: auto; padding-right: 5px; }
+        .left-panel { width: 320px; display: flex; flex-direction: column; gap: 15px; flex-shrink: 0; }
         .right-panel { flex: 1; display: flex; flex-direction: column; background: white; border: 1px solid #d2d0ce; border-radius: 6px; padding: 15px; }
 
-        .card { background: white; border: 1px solid #d2d0ce; border-radius: 6px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .card-title { font-size: 13px; font-weight: bold; color: var(--primary); margin-top: 0; margin-bottom: 8px; text-transform: uppercase; }
+        .card { background: white; border: 1px solid #d2d0ce; border-radius: 6px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .card-title { font-size: 14px; font-weight: bold; color: var(--primary); margin-top: 0; margin-bottom: 10px; text-transform: uppercase; }
 
         .btn {
             width: 100%; padding: 10px; background-color: var(--primary); color: white;
             border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
-            margin-bottom: 6px; transition: background 0.2s; display: flex;
+            margin-bottom: 8px; transition: background 0.2s; display: flex;
             align-items: center; justify-content: center; gap: 5px;
         }
         .btn:hover { background-color: var(--primary-hover); }
@@ -69,9 +69,9 @@
         .btn-warning { background-color: var(--warning); color: #000; }
         .btn-warning:hover { background-color: #d19800; }
 
-        input[type="text"], select, input[type="number"] {
-            width: 100%; padding: 6px 8px; border: 1px solid #cbd5e1;
-            border-radius: 4px; box-sizing: border-box; font-size: 13px;
+        input[type="text"], select {
+            width: 100%; padding: 8px; border: 1px solid #cbd5e1;
+            border-radius: 4px; box-sizing: border-box; font-size: 14px;
         }
 
         .preview-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e1dfdd; padding-bottom: 10px; margin-bottom: 15px; }
@@ -84,37 +84,14 @@
         .page-box {
             background: white; border: 2px solid #d2d0ce; padding: 12px; text-align: center;
             border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column;
-            align-items: center; justify-content: center; position: relative; transition: border-color 0.2s;
+            align-items: center; justify-content: center; cursor: grab; transition: transform 0.2s, border-color 0.2s;
         }
-        
-        /* Chế độ Grid bình thường cho phép kéo thả sắp xếp trang */
-        .page-box.sortable-mode { cursor: grab; }
-        .page-box.sortable-mode:active { cursor: grabbing; }
+        .page-box:active { cursor: grabbing; }
         .page-box.dragging { opacity: 0.4; transform: scale(0.95); }
-        .page-box.drag-over { border: 2px dashed var(--primary); background: #eef5fc; }
-
-        .canvas-wrapper { display: inline-block; overflow: hidden; border: 1px solid #b3b3b3; background: #ffffff; position: relative; user-select: none; }
+        .page-box.drag-over { border: 2px dashed var(--primary); background: #eef5fc; transform: scale(1.02); }
+        .canvas-wrapper { display: inline-block; overflow: hidden; border: 1px solid #b3b3b3; background: #ffffff; pointer-events: none; }
         .page-box canvas { display: block; max-width: 100%; height: auto; }
         .page-info { margin-top: 10px; font-size: 13px; font-weight: bold; color: #323130; pointer-events: none; }
-        
-        /* WATERMARK TRỰC QUAN (INTERACTIVE MOCKUP) */
-        .mockup-watermark {
-            position: absolute;
-            z-index: 10;
-            white-space: nowrap;
-            cursor: move;
-            user-select: none;
-            display: none;
-            transform-origin: center center;
-            line-height: 1;
-            padding: 4px;
-        }
-
-        /* Form nhóm các bộ lọc */
-        .inline-group { display: flex; gap: 8px; margin-bottom: 8px; }
-        .inline-group > div { flex: 1; }
-        .inline-group label { font-size: 11px; font-weight: 600; color: #555; display: block; margin-bottom: 2px; }
-
         .pagination-container { display: none; justify-content: center; align-items: center; gap: 15px; padding-top: 15px; border-top: 1px solid #e1dfdd; margin-top: 10px; }
         .page-nav-btn { background-color: var(--primary); color: white; border: none; padding: 8px 16px; font-weight: bold; border-radius: 4px; cursor: pointer; }
         .page-nav-btn:hover { background-color: var(--primary-hover); }
@@ -130,18 +107,31 @@
 
         /* TAB 3: SO SÁNH PDF */
         .compare-view { display: flex; flex-direction: row; gap: 15px; position: relative; flex: 1; overflow: hidden; }
-        .compare-pane { flex: 1; overflow-y: auto; overflow-x: auto; background: #f3f2f1; border: 1px solid #d2d0ce; border-radius: 4px; padding: 10px; text-align: center; }
+        
+        .compare-pane { 
+            flex: 1; overflow-y: auto; overflow-x: auto; 
+            background: #f3f2f1; border: 1px solid #d2d0ce; border-radius: 4px; padding: 10px; text-align: center; 
+        }
         .compare-pane canvas { box-shadow: 0 2px 6px rgba(0,0,0,0.15); max-width: 100%; margin-bottom: 20px; background: white; }
         
-        .overlay-container { display: none; position: relative; width: 100%; height: 100%; overflow-y: auto; overflow-x: auto; background: #f3f2f1; border: 1px solid #d2d0ce; border-radius: 4px; padding: 10px; box-sizing: border-box; }
-        .overlay-wrapper { position: relative; display: inline-block; margin: 0 auto; text-align: left; }
-        .overlay-canvas { position: absolute; top: 0; left: 0; box-shadow: 0 2px 6px rgba(0,0,0,0.15); background: white; }
+        .overlay-container {
+            display: none; position: relative; width: 100%; height: 100%; 
+            overflow-y: auto; overflow-x: auto; background: #f3f2f1; 
+            border: 1px solid #d2d0ce; border-radius: 4px; padding: 10px; box-sizing: border-box;
+        }
+        .overlay-wrapper {
+            position: relative; display: inline-block; margin: 0 auto; text-align: left;
+        }
+        .overlay-canvas {
+            position: absolute; top: 0; left: 0; box-shadow: 0 2px 6px rgba(0,0,0,0.15); background: white;
+        }
         .overlay-canvas:first-child { position: relative; }
 
         .visibility-controls { display: none; margin-top: 12px; flex-direction: column; gap: 8px; padding-left: 20px;}
         .radio-group { display: flex; flex-direction: column; gap: 6px; }
         .radio-label { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 4px 0; }
-        
+
+        /* About Tab */
         .about-container { padding: 40px; display: flex; width: 100%; justify-content: space-between; background: white; }
     </style>
 </head>
@@ -163,96 +153,53 @@
                     <button class="btn" onclick="document.getElementById('file-input').click()">📁 Mở file PDF</button>
                     <div id="file-status" style="font-size:12px; color:gray; word-break:break-all; margin-top:5px;">Chưa chọn file.</div>
                 </div>
-
                 <div class="card">
-                    <p class="card-title">✨ CẤU HÌNH WATERMARK</p>
-                    <label style="font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px; margin-bottom: 8px; cursor: pointer; color: var(--success);">
-                        <input type="checkbox" id="wm-enable" onchange="toggleWatermarkMockup()"> Kích hoạt Đóng Dấu Bản Quyền
-                    </label>
-                    
-                    <!--<div id="wm-settings-block" style="opacity: 0.4; pointer-events: none; transition: opacity 0.2s;">-->
-					<div id="wm-settings-block" style="display: none; pointer-events: none; transition: opacity 0.2s;">
-                        <div style="margin-bottom: 8px;">
-                            <input type="text" id="wm-text" value="HACHIHI.VN" placeholder="Nhập nội dung không dấu..." oninput="updateWatermarkStyles()">
-                        </div>
-
-                        <div class="inline-group">
-                            <div>
-                                <label>Cỡ chữ (px)</label>
-                                <input type="number" id="wm-size" value="24" min="10" max="100" oninput="updateWatermarkStyles()">
-                            </div>
-                            <div>
-                                <label>Màu sắc</label>
-                                <input type="color" id="wm-color" value="#ff0000" style="width:100%; height:32px; padding:0; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer;" onchange="updateWatermarkStyles()">
-                            </div>
-                        </div>
-
-                        <div class="inline-group">
-                            <div>
-                                <label>Góc xoay (°)</label>
-                                <input type="number" id="wm-rotation" value="-30" min="-360" max="360" oninput="updateWatermarkStyles()">
-                            </div>
-                            <div>
-                                <label>Độ mờ (0.1 - 1)</label>
-                                <input type="number" id="wm-opacity" value="0.4" min="0.1" max="1" step="0.1" oninput="updateWatermarkStyles()">
-                            </div>
-                        </div>
-
-                        <div class="inline-group" style="margin-top:5px;">
-                            <label style="font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">
-                                <input type="checkbox" id="wm-bold" onchange="updateWatermarkStyles()"> Đậm (Bold)
-                            </label>
-                            <label style="font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">
-                                <input type="checkbox" id="wm-italic" onchange="updateWatermarkStyles()"> Nghiêng (Italic)
-                            </label>
-                        </div>
-                        <p style="font-size:11px; color:#c00; margin: 6px 0 0 0; font-style:italic; line-height:1.3;">💡 Mẹo: Rê chuột vào chữ mờ trên khung hình bên phải để kéo thả định vị vị trí!</p>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <p class="card-title">2. Chọn trang xoay giấy</p>
-                    <input type="text" id="pages-input" placeholder="ví dụ: 3 hoặc 1-5 hoặc 3,5,8">
+                    <p class="card-title">2. Chọn trang cần xoay</p>
+                    <p style="font-size: 11px; color:#605e5c; margin: 0 0 8px 0; font-style:italic;">
+					Ví dụ: 3-7 áp dụng cho các trang từ 3 đến 7
+					</p>
+					<p style="font-size: 11px; color:#605e5c; margin: 0 0 8px 0; font-style:italic;">
+					3,5,7 áp dụng cho các trang 3 ,5 và 7
+					</p>
+					<p style="font-size: 11px; color:#605e5c; margin: 0 0 8px 0; font-style:italic;">
+					Bỏ trống = áp dụng toàn bộ</p>
+                    <input type="text" id="pages-input" placeholder="Nhập số trang...">
                 </div>
                 <div class="card">
-                    <p class="card-title">3. Thao tác xoay trang</p>
+                    <p class="card-title">3. Thao tác</p>
                     <button class="btn" onclick="rotate(90)">Xoay Phải 90° ↻</button>
                     <button class="btn" onclick="rotate(-90)">Xoay Trái 90° ↺</button>
-                    <button class="btn" id="undo-btn" onclick="undo()" style="margin-top:5px; background-color:#605e5c" disabled>↩ Hoàn tác sắp xếp</button>
+                    <button class="btn" onclick="rotate(180)">Xoay 180° ⇄</button>
+                    <button class="btn" id="undo-btn" onclick="undo()" style="margin-top:10px; background-color:#605e5c" disabled>↩ HOÀN TÁC (UNDO)</button>
                 </div>
                 <div class="card" style="margin-top: auto;">
                     <p class="card-title">4. Xuất bản</p>
                     <button class="btn btn-success" onclick="savePDF()">💾 LƯU FILE MỚI</button>
                 </div>
             </div>
-            
             <div class="right-panel">
                 <div class="preview-header">
-                    <span style="font-weight: bold; color: var(--primary); display: inline-flex; align-items: center; gap: 8px;">
-                        <h1 style="color: var(--primary); margin:0; font-size:16px; display: inline-flex; align-items: center; gap: 10px;">
-                            <img src="https://hachihi.vn/favicon.ico" alt="Logo" style="height: 20px; width: auto;" onerror="this.style.display='none'">
-                            <span>PDF SUITE - By Hachihi.vn</span>
-                        </h1>
-                    </span>
+                    <span style="font-weight: bold; color: var(--primary);">KHUNG XEM TRƯỚC (KÉO THẢ ĐỂ ĐỔI THỨ TỰ)</span>
                     <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="font-size: 13px;">Chế độ xem:</span>
-                        <select id="view-mode" onchange="updateViewMode()" style="width:140px;">
-                            <option value="1" selected>1 trang</option>
+                        <span style="font-size: 14px;">Chế độ hiển thị:</span>
+                        <select id="view-mode" onchange="updateViewMode()" style="width:160px;">
+                            <option value="1">1 trang</option>
                             <option value="2">2 trang cùng lúc</option>
-                            <option value="4">4 trang cùng lúc</option>
+                            <option value="4" selected>4 trang cùng lúc</option>
+                            <option value="9">9 trang cùng lúc</option>
                             <option value="all">Tất cả các trang</option>
                         </select>
                     </div>
                 </div>
                 <div class="grid-container" id="grid-container">
                     <div style="color:gray; font-style:italic; grid-column: 1/-1; text-align:center; padding-top:40px;">
-                        Vui lòng mở file PDF để kích hoạt tính năng chỉnh sửa và đóng dấu.
+                        Vui lòng mở file PDF. Kéo thả trang để đổi thứ tự.
                     </div>
                 </div>
                 <div class="pagination-container" id="pagination-ctrl">
-                    <button class="page-nav-btn" id="prev-page-btn" onclick="changePageOffset(-1)">◀ Trước</button>
+                    <button class="page-nav-btn" id="prev-page-btn" onclick="changePageOffset(-1)">◀ Trang Trước</button>
                     <span class="page-indicator" id="page-indicator-text">Đang xem: 0 - 0 / 0</span>
-                    <button class="page-nav-btn" id="next-page-btn" onclick="changePageOffset(1)">Sau ▶</button>
+                    <button class="page-nav-btn" id="next-page-btn" onclick="changePageOffset(1)">Trang Sau ▶</button>
                 </div>
             </div>
         </div>
@@ -277,7 +224,9 @@
                     <button class="btn btn-danger btn-small" onclick="clearMergeList()">🧹 Xóa hết</button>
                 </div>
                 <div class="file-list" id="file-list-container">
-                    <div style="color:gray; font-style:italic; text-align:center; padding-top:40px;">Chưa chọn tệp tin nào.</div>
+                    <div style="color:gray; font-style:italic; text-align:center; padding-top:40px;">
+                        Chưa chọn tệp tin nào.
+                    </div>
                 </div>
             </div>
         </div>
@@ -303,15 +252,21 @@
                         <input type="checkbox" id="sync-scroll" checked> Cuộn đồng bộ 2 bên
                     </label>
                     <label style="font-size: 14px; display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--danger); font-weight: bold;">
-                        <input type="checkbox" id="overlay-mode" onchange="toggleOverlayMode()"> Sếp chồng lên nhau
+                        <input type="checkbox" id="overlay-mode" onchange="toggleOverlayMode()"> Đè thực sự lên nhau (Chồng khít)
                     </label>
                     
                     <div class="visibility-controls" id="visibility-controls-group">
                         <p style="font-size:11px; color:#555; margin:0 0 5px 0; font-style:italic;">Chọn file muốn hiển thị:</p>
                         <div class="radio-group">
-                            <label class="radio-label"><input type="radio" name="view-filter" value="only-A" onchange="applyViewFilter(this.value)"> 🟢 Chỉ hiện File Gốc (A)</label>
-                            <label class="radio-label"><input type="radio" name="view-filter" value="only-B" onchange="applyViewFilter(this.value)"> 🟡 Chỉ hiện File Sửa (B)</label>
-                            <label class="radio-label"><input type="radio" name="view-filter" value="both" checked onchange="applyViewFilter(this.value)"> 🔵 Hiện Cả Hai (Trộn mờ)</label>
+                            <label class="radio-label">
+                                <input type="radio" name="view-filter" value="only-A" onchange="applyViewFilter(this.value)"> 🟢 Chỉ hiện File Gốc (A)
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="view-filter" value="only-B" onchange="applyViewFilter(this.value)"> 🟡 Chỉ hiện File Sửa (B)
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="view-filter" value="both" checked onchange="applyViewFilter(this.value)"> 🔵 Hiện Cả Hai (Trộn mờ)
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -329,7 +284,9 @@
             <div class="right-panel" style="position: relative;">
                 <div class="preview-header">
                     <span style="font-weight: bold; color: var(--primary);">KHUNG ĐỐI CHIẾU THÔNG MINH</span>
+                    <span style="font-size: 12px; color: #605e5c;">Mẹo: Click luân phiên giữa nút A và B để thấy điểm khác biệt</span>
                 </div>
+                
                 <div class="compare-view" id="compare-view-container" style="height: 100%;">
                     <div id="compare-pane-1" class="compare-pane" onscroll="handleSyncScroll(1)">
                         <div style="color:gray; font-style:italic; margin-top:40px;">Đang chờ File A...</div>
@@ -337,6 +294,7 @@
                     <div id="compare-pane-2" class="compare-pane" onscroll="handleSyncScroll(2)">
                         <div style="color:gray; font-style:italic; margin-top:40px;">Đang chờ File B...</div>
                     </div>
+                    
                     <div id="compare-overlay-container" class="overlay-container">
                         <div class="overlay-wrapper" id="overlay-wrapper-content"></div>
                     </div>
@@ -349,14 +307,14 @@
         <div class="about-container">
             <div class="about-left">
                 <h1 style="color: var(--primary); margin-top:0; display: inline-flex; align-items: center; gap: 10px;">
-    <img src="https://hachihi.vn/image/685127b6335b176a5328fbaf/thumbnail.jpg" alt="Logo" style="height: 80px; width: auto;" onerror="this.style.display='none'">
+    <img src="https://hachihi.vn/image/685127b6335b176a5328fbaf/thumbnail.jpg" alt="Logo" style="height: 30px; width: auto;" onerror="this.style.display='none'">
     <span>PDF SUITE - By Hachihi.vn</span>
 </h1>
                 <p style="font-style: italic; color: var(--primary-hover);">Phiên bản free V020726 - support : Hải Hoàng 09-1800-1944</p>
                 <hr style="border:0; border-top: 1px solid #d2d0ce; margin: 20px 0;">
                 <p><b>💡 TÍNH NĂNG :</b></p>
                 <ul style="line-height: 1.6;">
-                    <li><b>Xoay trang , sắp xếp Kéo-Thả (Drag & Drop):</b> Trực quan thay đổi thứ tự tài liệu. WATERMARK</li>
+                    <li><b>Xoay trang , sắp xếp Kéo-Thả (Drag & Drop):</b> Trực quan thay đổi thứ tự tài liệu.</li>
                     <li><b>So Sánh Tuyệt Đối (Strict Compare):</b> Cho phép đặt chồng hai tài liệu lên nhau và ẩn/hiện từng lớp theo ý muốn để không bao giờ bị mờ mắt khi đối chiếu văn bản chỉnh sửa.</li>
                     <li><b>Hoàn toàn Client-Side:</b> Bảo mật tuyệt đối 100%.</li>
                 </ul>
@@ -367,7 +325,7 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
-        // --- Khai báo biến hệ thống ---
+        // --- Khai báo biến ---
         let originalPdfBytes = null;
         let pageRotations = []; 
         let pageOrder = [];     
@@ -376,148 +334,20 @@
         let currentPageStartIndex = 0; 
         let dragSourceIndex = null; 
 
-        // --- Tọa độ tương đối của Watermark (% từ Top và Left của khung chứa) ---
-        let wmRelativeLeft = 30; 
-        let wmRelativeTop = 40;
-        let isDraggingWatermark = false;
-        let startX, startY;
-
         function switchTab(tabId, btn) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             btn.classList.add('active');
-            if (tabId === 'tab-compare') setTimeout(renderCompare, 100);
-        }
-
-        // ==========================================
-        // KHU VỰC 1: SỬA & SẮP XẾP + WATERMARK (TAB 1)
-        // ==========================================
-        function toggleWatermarkMockup_mo() {
-            const isEnabled = document.getElementById('wm-enable').checked;
-            const settingsBlock = document.getElementById('wm-settings-block');
-            const mockups = document.querySelectorAll('.mockup-watermark');
             
-            if (isEnabled) {
-                settingsBlock.style.opacity = "1";
-                settingsBlock.style.pointerEvents = "auto";
-                mockups.forEach(m => m.style.display = "block");
-                // Tắt tính năng kéo xếp trang để tránh xung đột chuột với kéo watermark
-                document.querySelectorAll('.page-box').forEach(b => b.classList.remove('sortable-mode'));
-            } else {
-                settingsBlock.style.opacity = "0.4";
-                settingsBlock.style.pointerEvents = "none";
-                mockups.forEach(m => m.style.display = "none");
-                // Bật lại chế độ xếp trang
-                document.querySelectorAll('.page-box').forEach(b => b.classList.add('sortable-mode'));
+            if (tabId === 'tab-compare') {
+                setTimeout(renderCompare, 100);
             }
-            updateWatermarkStyles();
-        }
-		
-		function toggleWatermarkMockup() {
-    const isEnabled = document.getElementById('wm-enable').checked;
-    const settingsBlock = document.getElementById('wm-settings-block');
-    const mockups = document.querySelectorAll('.mockup-watermark');
-    
-    if (isEnabled) {
-        // KHI CHECK: Hiện toàn bộ khối cấu hình lên
-        settingsBlock.style.display = "block";
-        settingsBlock.style.pointerEvents = "auto";
-        mockups.forEach(m => m.style.display = "block");
-        
-        // Tắt tính năng kéo xếp trang để ưu tiên kéo watermark
-        document.querySelectorAll('.page-box').forEach(b => b.classList.remove('sortable-mode'));
-    } else {
-        // KHI BỎ CHECK: Ẩn hoàn toàn khối cấu hình đi
-        settingsBlock.style.display = "none";
-        settingsBlock.style.pointerEvents = "none";
-        mockups.forEach(m => m.style.display = "none");
-        
-        // Bật lại chế độ xếp trang bình thường
-        document.querySelectorAll('.page-box').forEach(b => b.classList.add('sortable-mode'));
-    }
-    updateWatermarkStyles();
-}
-
-        function updateWatermarkStyles() {
-            <!--const text = document.getElementById('wm-text').value;-->
-			const input = document.getElementById('wm-text');
-
-			// Tự động bỏ dấu
-			const text = removeVietnameseTones(input.value);
-
-			// Nếu người dùng nhập có dấu thì cập nhật lại ô nhập
-			if (input.value !== text) {
-				input.value = text;
-			}
-
-            const size = document.getElementById('wm-size').value + "px";
-            const color = document.getElementById('wm-color').value;
-            const rotation = document.getElementById('wm-rotation').value + "deg";
-            const opacity = document.getElementById('wm-opacity').value;
-            const isBold = document.getElementById('wm-bold').checked;
-            const isItalic = document.getElementById('wm-italic').checked;
-
-            const mockups = document.querySelectorAll('.mockup-watermark');
-            mockups.forEach(m => {
-                m.innerText = text;
-                m.style.fontSize = size;
-                m.style.color = color;
-                m.style.transform = `rotate(${rotation})`;
-                m.style.opacity = opacity;
-                m.style.fontWeight = isBold ? 'bold' : 'normal';
-                m.style.fontStyle = isItalic ? 'italic' : 'normal';
-                
-                // Định vị lại theo % chiều cao/chiều rộng của khối bọc nó
-                m.style.left = wmRelativeLeft + "%";
-                m.style.top = wmRelativeTop + "%";
-            });
         }
 
-        function setupWatermarkDragging(mElement) {
-            mElement.addEventListener('mousedown', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                isDraggingWatermark = true;
-                startX = e.clientX;
-                startY = e.clientY;
-                
-                const wrapper = mElement.parentElement;
-                const wrapperRect = wrapper.getBoundingClientRect();
-
-                function onMouseMove(moveEvent) {
-                    if (!isDraggingWatermark) return;
-                    let deltaX = moveEvent.clientX - startX;
-                    let deltaY = moveEvent.clientY - startY;
-                    
-                    startX = moveEvent.clientX;
-                    startY = moveEvent.clientY;
-
-                    let currentLeftPx = parseFloat(mElement.style.left || 0) * wrapperRect.width / 100;
-                    let currentTopPx = parseFloat(mElement.style.top || 0) * wrapperRect.height / 100;
-
-                    let newLeftPx = currentLeftPx + deltaX;
-                    let newTopPx = currentTopPx + deltaY;
-
-                    // Chuyển đổi ngược sang tỷ lệ %
-                    wmRelativeLeft = (newLeftPx / wrapperRect.width) * 100;
-                    wmRelativeTop = (newTopPx / wrapperRect.height) * 100;
-
-                    // Đồng bộ lên toàn bộ các trang hiển thị
-                    updateWatermarkStyles();
-                }
-
-                function onMouseUp() {
-                    isDraggingWatermark = false;
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                }
-
-                document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', onMouseUp);
-            });
-        }
-
+        // ==========================================
+        // KHU VỰC 1: SỬA & SẮP XẾP PDF (TAB 1)
+        // ==========================================
         function saveToHistory() {
             historyStack.push({ rotations: [...pageRotations], order: [...pageOrder] });
             document.getElementById('undo-btn').disabled = false;
@@ -593,6 +423,7 @@
             const container = document.getElementById('grid-container');
             if (mode === "1") container.style.gridTemplateColumns = "repeat(1, 1fr)";
             else if (mode === "2" || mode === "4") container.style.gridTemplateColumns = "repeat(2, 1fr)";
+            else if (mode === "9") container.style.gridTemplateColumns = "repeat(3, 1fr)";
             else container.style.gridTemplateColumns = "repeat(4, 1fr)";
             currentPageStartIndex = 0; renderGrid();
         }
@@ -601,20 +432,18 @@
             const mode = document.getElementById('view-mode').value;
             if (mode === "all" || !originalPdfBytes) return;
             let step = 1;
-            if (mode === "2") step = 2; else if (mode === "4") step = 4;
+            if (mode === "2") step = 2; else if (mode === "4") step = 4; else if (mode === "9") step = 9;
             currentPageStartIndex += direction * step;
             if (currentPageStartIndex < 0) currentPageStartIndex = 0;
             renderGrid();
         }
 
-        // Kéo thả đổi vị trí trang tài liệu
-        function handleDragStart(e) { if(document.getElementById('wm-enable').checked) return; dragSourceIndex = parseInt(this.getAttribute('data-index')); e.dataTransfer.effectAllowed = 'move'; this.classList.add('dragging'); }
+        function handleDragStart(e) { dragSourceIndex = parseInt(this.getAttribute('data-index')); e.dataTransfer.effectAllowed = 'move'; this.classList.add('dragging'); }
         function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return false; }
-        function handleDragEnter(e) { if(!document.getElementById('wm-enable').checked) this.classList.add('drag-over'); }
+        function handleDragEnter(e) { this.classList.add('drag-over'); }
         function handleDragLeave(e) { this.classList.remove('drag-over'); }
         function handleDrop(e) {
             e.stopPropagation(); this.classList.remove('drag-over');
-            if(document.getElementById('wm-enable').checked) return;
             const dropTargetIndex = parseInt(this.getAttribute('data-index'));
             if (dragSourceIndex !== null && dragSourceIndex !== dropTargetIndex) {
                 saveToHistory();
@@ -640,10 +469,12 @@
             if (taskId !== currentRenderTaskId) return;
             const totalPages = pdfjsDoc.numPages;
             
-            let limit = totalPages, scaleFactor = 0.5; 
+            let limit = totalPages, scaleFactor = 0.4; 
             if (mode === "1") { limit = 1; scaleFactor = 1.0; }
-            else if (mode === "2") { limit = 2; scaleFactor = 0.65; }
+            else if (mode === "2") { limit = 2; scaleFactor = 0.6; }
             else if (mode === "4") { limit = 4; scaleFactor = 0.45; }
+            else if (mode === "9") { limit = 9; scaleFactor = 0.35; }
+            else { scaleFactor = 0.3; }
 
             if (currentPageStartIndex >= totalPages) currentPageStartIndex = Math.max(0, totalPages - limit);
             let startPage = currentPageStartIndex + 1;
@@ -653,12 +484,10 @@
             if (mode === "all") paginator.style.display = "none"; 
             else {
                 paginator.style.display = "flex";
-                document.getElementById('page-indicator-text').innerText = `Trang ${startPage} - ${endPage} / ${totalPages}`;
+                document.getElementById('page-indicator-text').innerText = `Đang xem: Trang ${startPage} - ${endPage} / ${totalPages}`;
                 document.getElementById('prev-page-btn').disabled = (startPage === 1);
                 document.getElementById('next-page-btn').disabled = (endPage === totalPages);
             }
-
-            const wmEnabled = document.getElementById('wm-enable').checked;
 
             for (let i = startPage; i <= endPage; i++) {
                 if (taskId !== currentRenderTaskId) return;
@@ -666,11 +495,7 @@
                 const originalPageIndex = pageOrder[globalIndex] + 1; 
                 const page = await pdfjsDoc.getPage(originalPageIndex);
                 
-                const box = document.createElement('div'); 
-                box.className = "page-box" + (!wmEnabled ? " sortable-mode" : ""); 
-                box.draggable = !wmEnabled; 
-                box.setAttribute('data-index', globalIndex); 
-                
+                const box = document.createElement('div'); box.className = "page-box"; box.draggable = true; box.setAttribute('data-index', globalIndex); 
                 box.addEventListener('dragstart', handleDragStart); box.addEventListener('dragover', handleDragOver);
                 box.addEventListener('dragenter', handleDragEnter); box.addEventListener('dragleave', handleDragLeave);
                 box.addEventListener('drop', handleDrop); box.addEventListener('dragend', handleDragEnd);
@@ -681,119 +506,34 @@
                 const viewport = page.getViewport({ scale: scaleFactor, rotation: currentRotation });
                 canvas.height = viewport.height; canvas.width = viewport.width;
 
-                wrapper.appendChild(canvas);
-                
-                // Gắn thành phần chữ mờ tương tác (Watermark Mockup) vào từng trang
-                const mWatermark = document.createElement('div');
-                mWatermark.className = "mockup-watermark";
-                setupWatermarkDragging(mWatermark);
-                wrapper.appendChild(mWatermark);
-
-                box.appendChild(wrapper);
+                wrapper.appendChild(canvas); box.appendChild(wrapper);
                 const info = document.createElement('div'); info.className = "page-info";
                 info.innerText = `Trang ${i}`; box.appendChild(info);
                 container.appendChild(box);
 
                 await page.render({ canvasContext: context, viewport: viewport }).promise;
             }
-            updateWatermarkStyles();
-            if(wmEnabled) {
-                document.querySelectorAll('.mockup-watermark').forEach(m => m.style.display = "block");
-            }
         }
 
-        // --- Hàm mã hóa Hex sang RGB để cấp cho PDF-Lib ---
-        function hexToRgb(hex) {
-            var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-            return result ? {
-                r: parseInt(result[1], 16) / 255,
-                g: parseInt(result[2], 16) / 255,
-                b: parseInt(result[3], 16) / 255
-            } : { r: 0, g: 0, b: 0 };
-        }
-
-        // XUẤT FILE HOÀN CHỈNH: GỘP THAO TÁC XOAY VÀ ĐÓNG DẤU THỰC SỰ VÀO FILE
         async function savePDF() {
             if (!originalPdfBytes) return;
             const originalDoc = await PDFLib.PDFDocument.load(originalPdfBytes.slice(0));
             const mergedPdfDoc = await PDFLib.PDFDocument.create(); 
-            
             const copiedPages = await mergedPdfDoc.copyPages(originalDoc, pageOrder);
-            
-            const wmEnabled = document.getElementById('wm-enable').checked;
-            <!--const wmText = document.getElementById('wm-text').value;-->
-			const wmText = removeVietnameseTones(document.getElementById('wm-text').value);
-            const wmSize = parseInt(document.getElementById('wm-size').value);
-            const wmColorHex = document.getElementById('wm-color').value;
-            const wmRotationDeg = parseInt(document.getElementById('wm-rotation').value);
-            const wmOpacity = parseFloat(document.getElementById('wm-opacity').value);
-            const isBold = document.getElementById('wm-bold').checked;
-            const isItalic = document.getElementById('wm-italic').checked;
-            
-            const rgbColor = hexToRgb(wmColorHex);
-
-            // Chọn font chữ chuẩn có sẵn trong PDF-Lib
-            let chosenFont = await mergedPdfDoc.embedStandardFont(PDFLib.StandardFonts.Helvetica);
-            if (isBold && isItalic) chosenFont = await mergedPdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBoldOblique);
-            else if (isBold) chosenFont = await mergedPdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBold);
-            else if (isItalic) chosenFont = await mergedPdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaOblique);
-
-
-copiedPages.forEach((page, idx) => {
-    // Lấy góc xoay gốc của trang giấy từ mảng lưu trữ
-    const currentPageRotation = pageRotations[idx] || 0;
-    
-    // BƯỚC 1: Tạm thời đưa góc xoay của trang về 0 độ để đóng dấu phẳng chuẩn 100% như Web
-    page.setRotation(PDFLib.degrees(0));
-    
-    if (wmEnabled && wmText.trim() !== "") {
-        const { width, height } = page.getSize();
-        
-        // Tính tọa độ X, Y tuyệt đối theo tỉ lệ % từ giao diện Web
-        let pdfX = (wmRelativeLeft / 100) * width;
-        let pdfY = height - ((wmRelativeTop / 100) * height); // Đảo trục Y cho PDF
-
-        // BƯỚC 2: Kiểm tra nếu trang gốc bị xoay 90 hoặc 270 độ (đổi chiều dọc/ngang)
-        // Ta cần hoán đổi vị trí X và Y tương ứng để không bị lệch tâm
-        if (currentPageRotation === 90 || currentPageRotation === 270) {
-            pdfX = (wmRelativeTop / 100) * width;
-            pdfY = height - ((wmRelativeLeft / 100) * height);
-        }
-
-        // BƯỚC 3: Vẽ chữ với đúng góc xoay người dùng nhập (Đổi dấu góc xoay nếu cần)
-        // Trong PDF, góc dương là quay ngược chiều kim đồng hồ, nếu trên Web bạn thấy ngược,
-        // chỉ cần thêm dấu trừ (-) trước wmRotationDeg là xong.
-        let finalRotation = -wmRotationDeg; 
-
-        page.drawText(wmText, {
-            x: pdfX,
-            y: pdfY,
-            size: wmSize,
-            font: chosenFont,
-            color: PDFLib.rgb(rgbColor.r, rgbColor.g, rgbColor.b),
-            rotate: PDFLib.degrees(finalRotation), 
-            opacity: wmOpacity,
-        });
-    }
-    
-    // BƯỚC 4: Cuối cùng mới xoay toàn bộ trang giấy (bao gồm cả chữ vừa vẽ) về đúng hướng của nó
-    page.setRotation(PDFLib.degrees(currentPageRotation));
-    
-    mergedPdfDoc.addPage(page);
-});
-
+            copiedPages.forEach((page, idx) => { page.setRotation(PDFLib.degrees(pageRotations[idx])); mergedPdfDoc.addPage(page); });
             const modifiedPdfBytes = await mergedPdfDoc.save();
             const blob = new Blob([modifiedPdfBytes], { type: "application/pdf" });
             const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
-            link.download = "tai_lieu_da_dong_dau_ban_quyen.pdf"; link.click();
+            link.download = "tai_lieu_da_chinh_sua.pdf"; link.click();
         }
 
         // ==========================================
-        // KHU VỰC 2: GỘP PDF (TAB 2)
+        // KHU VỰC 2: GỘP PDF (TAB 2) - ĐÃ SỬA LỖI NÚT LƯU
         // ==========================================
         let mergeFilesArray = []; 
         function addMergeFiles(input) {
-            const files = input.files; if (files.length === 0) return;
+            const files = input.files;
+            if (files.length === 0) return;
             let loadedCount = 0;
             for(let i = 0; i < files.length; i++) {
                 const file = files[i]; const reader = new FileReader();
@@ -809,6 +549,7 @@ copiedPages.forEach((page, idx) => {
                 reader.readAsArrayBuffer(file);
             }
         }
+
         function renderMergeList() {
             const container = document.getElementById('file-list-container');
             const submitBtn = document.getElementById('merge-submit-btn');
@@ -820,18 +561,24 @@ copiedPages.forEach((page, idx) => {
             mergeFilesArray.forEach((fileObj, idx) => {
                 const item = document.createElement('div'); item.className = "file-item";
                 item.innerHTML = `
-                    <div class="file-item-info"><span class="file-item-name">${idx + 1}. ${fileObj.name}</span><span class="file-item-meta">Số trang: ${fileObj.pageCount} trang</span></div>
+                    <div class="file-item-info">
+                        <span class="file-item-name">${idx + 1}. ${fileObj.name}</span>
+                        <span class="file-item-meta">Số trang: ${fileObj.pageCount} trang</span>
+                    </div>
                     <div class="file-item-actions">
-                        <button class="btn btn-small" onclick="moveMergeFile(${idx}, -1)" ${idx===0?'disabled':''}>▲</button>
-                        <button class="btn btn-small" onclick="moveMergeFile(${idx}, 1)" ${idx===mergeFilesArray.length-1?'disabled':''}>▼</button>
-                        <button class="btn btn-danger btn-small" onclick="deleteMergeFile(${idx})">❌</button>
+                        <button class="btn btn-small" onclick="moveMergeFile(${idx}, -1)" ${idx===0?'disabled':''}>▲ Lên</button>
+                        <button class="btn btn-small" onclick="moveMergeFile(${idx}, 1)" ${idx===mergeFilesArray.length-1?'disabled':''}>▼ Xuống</button>
+                        <button class="btn btn-danger btn-small" onclick="deleteMergeFile(${idx})">❌ Xóa</button>
                     </div>`;
                 container.appendChild(item);
             });
         }
+
         function moveMergeFile(index, dir) { const target = index + dir; if (target < 0 || target >= mergeFilesArray.length) return; const t = mergeFilesArray[index]; mergeFilesArray[index] = mergeFilesArray[target]; mergeFilesArray[target] = t; renderMergeList(); }
         function deleteMergeFile(index) { mergeFilesArray.splice(index, 1); renderMergeList(); }
         function clearMergeList() { mergeFilesArray = []; renderMergeList(); }
+
+        // FIX LỖI: Trả lại đúng hàm xử lý tạo file PDF gộp
         async function generateMergedPDF() {
             if (mergeFilesArray.length < 2) return;
             const mergedPdfDoc = await PDFLib.PDFDocument.create();
@@ -850,84 +597,174 @@ copiedPages.forEach((page, idx) => {
         // ==========================================
         // KHU VỰC 3: SO SÁNH PDF (TAB 3)
         // ==========================================
-        let compareDoc1 = null, compareDoc2 = null, currentComparePage = 0, maxComparePages = 0, compareRenderTaskId = 0;
+        let compareDoc1 = null;
+        let compareDoc2 = null;
+        let currentComparePage = 0;
+        let maxComparePages = 0;
+        let compareRenderTaskId = 0;
+
         async function loadCompareFile(input, fileNum) {
-            const file = input.files[0]; if (!file) return;
+            const file = input.files[0];
+            if (!file) return;
             document.getElementById(`compare-status-${fileNum}`).innerText = "✓ " + file.name;
             document.getElementById(`compare-status-${fileNum}`).style.color = "var(--success)";
+            
             const reader = new FileReader();
             reader.onload = async function() {
-                const bytes = new Uint8Array(this.result); const loadingTask = pdfjsLib.getDocument({data: bytes});
-                if (fileNum === 1) compareDoc1 = await loadingTask.promise; else compareDoc2 = await loadingTask.promise;
-                let p1 = compareDoc1 ? compareDoc1.numPages : 0; let p2 = compareDoc2 ? compareDoc2.numPages : 0;
+                const bytes = new Uint8Array(this.result);
+                const loadingTask = pdfjsLib.getDocument({data: bytes});
+                if (fileNum === 1) compareDoc1 = await loadingTask.promise;
+                else compareDoc2 = await loadingTask.promise;
+                
+                let p1 = compareDoc1 ? compareDoc1.numPages : 0;
+                let p2 = compareDoc2 ? compareDoc2.numPages : 0;
                 maxComparePages = Math.max(p1, p2);
-                if (currentComparePage === 0 && maxComparePages > 0) currentComparePage = 1;
+                
+                if (currentComparePage === 0 && maxComparePages > 0) {
+                    currentComparePage = 1;
+                }
                 renderCompare();
             };
             reader.readAsArrayBuffer(file);
         }
-        function changeComparePage(dir) { let newPage = currentComparePage + dir; if (newPage >= 1 && newPage <= maxComparePages) { currentComparePage = newPage; renderCompare(); } }
+
+        function changeComparePage(dir) {
+            let newPage = currentComparePage + dir;
+            if (newPage >= 1 && newPage <= maxComparePages) {
+                currentComparePage = newPage;
+                renderCompare();
+            }
+        }
+
         function toggleOverlayMode() {
             const isOverlay = document.getElementById('overlay-mode').checked;
             const controlsGroup = document.getElementById('visibility-controls-group');
             const syncScrollLabel = document.getElementById('sync-scroll-label');
-            const pane1 = document.getElementById('compare-pane-1'), pane2 = document.getElementById('compare-pane-2'), overlayContainer = document.getElementById('compare-overlay-container');
+            const pane1 = document.getElementById('compare-pane-1');
+            const pane2 = document.getElementById('compare-pane-2');
+            const overlayContainer = document.getElementById('compare-overlay-container');
+
             if (isOverlay) {
-                pane1.style.display = 'none'; pane2.style.display = 'none'; overlayContainer.style.display = 'block'; controlsGroup.style.display = 'flex'; syncScrollLabel.style.opacity = '0.3';
-                applyViewFilter(document.querySelector('input[name="view-filter"]:checked').value);
+                pane1.style.display = 'none';
+                pane2.style.display = 'none';
+                overlayContainer.style.display = 'block';
+                controlsGroup.style.display = 'flex'; 
+                syncScrollLabel.style.opacity = '0.3';
+                
+                const activeFilter = document.querySelector('input[name="view-filter"]:checked').value;
+                applyViewFilter(activeFilter);
             } else {
-                pane1.style.display = 'block'; pane2.style.display = 'block'; overlayContainer.style.display = 'none'; controlsGroup.style.display = 'none'; syncScrollLabel.style.opacity = '1';
+                pane1.style.display = 'block';
+                pane2.style.display = 'block';
+                overlayContainer.style.display = 'none';
+                controlsGroup.style.display = 'none'; 
+                syncScrollLabel.style.opacity = '1';
             }
         }
+
         function applyViewFilter(filterValue) {
             if (!document.getElementById('overlay-mode').checked) return;
-            const cvA = document.getElementById('canvas-overlay-A'), cvB = document.getElementById('canvas-overlay-B');
+
+            const cvA = document.getElementById('canvas-overlay-A');
+            const cvB = document.getElementById('canvas-overlay-B');
+
             if (!cvA || !cvB) return;
-            if (filterValue === 'only-A') { cvA.style.visibility = 'visible'; cvA.style.opacity = '1'; cvB.style.visibility = 'hidden'; } 
-            else if (filterValue === 'only-B') { cvA.style.visibility = 'hidden'; cvB.style.visibility = 'visible'; cvB.style.opacity = '1'; } 
-            else if (filterValue === 'both') { cvA.style.visibility = 'visible'; cvA.style.opacity = '1'; cvB.style.visibility = 'visible'; cvB.style.opacity = '0.5'; }
+
+            if (filterValue === 'only-A') {
+                cvA.style.visibility = 'visible';
+                cvA.style.opacity = '1';
+                cvB.style.visibility = 'hidden'; 
+            } 
+            else if (filterValue === 'only-B') {
+                cvA.style.visibility = 'hidden';
+                cvB.style.visibility = 'visible';
+                cvB.style.opacity = '1';
+            } 
+            else if (filterValue === 'both') {
+                cvA.style.visibility = 'visible';
+                cvA.style.opacity = '1';
+                cvB.style.visibility = 'visible';
+                cvB.style.opacity = '0.5'; 
+            }
         }
+
         async function renderCompare() {
-            if (!compareDoc1 && !compareDoc2) return; const taskId = ++compareRenderTaskId;
+            if (!compareDoc1 && !compareDoc2) return;
+            const taskId = ++compareRenderTaskId;
+
             document.getElementById('compare-page-indicator').innerText = `${currentComparePage} / ${maxComparePages}`;
-            const pane1 = document.getElementById('compare-pane-1'), pane2 = document.getElementById('compare-pane-2'), wrapperContent = document.getElementById('overlay-wrapper-content');
-            pane1.innerHTML = ''; pane2.innerHTML = ''; wrapperContent.innerHTML = '';
-            const scaleFactor = 1.3;
+            
+            const pane1 = document.getElementById('compare-pane-1');
+            const pane2 = document.getElementById('compare-pane-2');
+            const wrapperContent = document.getElementById('overlay-wrapper-content');
+            
+            pane1.innerHTML = '';
+            pane2.innerHTML = '';
+            wrapperContent.innerHTML = '';
+
+            const scaleFactor = 1.3; 
+            let canvasA = null, canvasB = null;
 
             if (compareDoc1 && currentComparePage <= compareDoc1.numPages) {
-                const pageA = await compareDoc1.getPage(currentComparePage); if (taskId !== compareRenderTaskId) return;
+                const pageA = await compareDoc1.getPage(currentComparePage);
+                if (taskId !== compareRenderTaskId) return;
                 const vpA = pageA.getViewport({ scale: scaleFactor });
-                let canvasA = document.createElement('canvas'); canvasA.height = vpA.height; canvasA.width = vpA.width; pane1.appendChild(canvasA);
+                
+                canvasA = document.createElement('canvas');
+                canvasA.height = vpA.height; canvasA.width = vpA.width;
+                pane1.appendChild(canvasA);
                 pageA.render({ canvasContext: canvasA.getContext('2d'), viewport: vpA });
-                const canvasOverlayA = document.createElement('canvas'); canvasOverlayA.id = 'canvas-overlay-A'; canvasOverlayA.className = 'overlay-canvas'; canvasOverlayA.height = vpA.height; canvasOverlayA.width = vpA.width; wrapperContent.appendChild(canvasOverlayA);
+
+                const canvasOverlayA = document.createElement('canvas');
+                canvasOverlayA.id = 'canvas-overlay-A';
+                canvasOverlayA.className = 'overlay-canvas';
+                canvasOverlayA.height = vpA.height; canvasOverlayA.width = vpA.width;
+                wrapperContent.appendChild(canvasOverlayA);
                 pageA.render({ canvasContext: canvasOverlayA.getContext('2d'), viewport: vpA });
+            } else {
+                pane1.innerHTML = '<div style="color:gray; font-style:italic; margin-top:40px;">Hết số trang ở tệp tin này.</div>';
             }
-if (compareDoc2 && currentComparePage <= compareDoc2.numPages) {
-                const pageB = await compareDoc2.getPage(currentComparePage); if (taskId !== compareRenderTaskId) return;
+
+            if (compareDoc2 && currentComparePage <= compareDoc2.numPages) {
+                const pageB = await compareDoc2.getPage(currentComparePage);
+                if (taskId !== compareRenderTaskId) return;
                 const vpB = pageB.getViewport({ scale: scaleFactor });
-                let canvasB = document.createElement('canvas'); canvasB.height = vpB.height; canvasB.width = vpB.width; pane2.appendChild(canvasB);
+                
+                canvasB = document.createElement('canvas');
+                canvasB.height = vpB.height; canvasB.width = vpB.width;
+                pane2.appendChild(canvasB);
                 pageB.render({ canvasContext: canvasB.getContext('2d'), viewport: vpB });
-                const canvasOverlayB = document.createElement('canvas'); canvasOverlayB.id = 'canvas-overlay-B'; canvasOverlayB.className = 'overlay-canvas'; canvasOverlayB.height = vpB.height; canvasOverlayB.width = vpB.width; wrapperContent.appendChild(canvasOverlayB);
+
+                const canvasOverlayB = document.createElement('canvas');
+                canvasOverlayB.id = 'canvas-overlay-B';
+                canvasOverlayB.className = 'overlay-canvas';
+                canvasOverlayB.height = vpB.height; canvasOverlayB.width = vpB.width;
+                wrapperContent.appendChild(canvasOverlayB);
                 pageB.render({ canvasContext: canvasOverlayB.getContext('2d'), viewport: vpB });
+            } else {
+                pane2.innerHTML = '<div style="color:gray; font-style:italic; margin-top:40px;">Hết số trang ở tệp tin này.</div>';
             }
-            applyViewFilter(document.querySelector('input[name="view-filter"]:checked').value);
+
+            const activeFilter = document.querySelector('input[name="view-filter"]:checked').value;
+            applyViewFilter(activeFilter);
         }
+
         let isSyncingScroll = false;
         function handleSyncScroll(paneIndex) {
-            if (!document.getElementById('sync-scroll').checked || isSyncingScroll) return; isSyncingScroll = true;
-            const paneA = document.getElementById('compare-pane-1'), paneB = document.getElementById('compare-pane-2');
-            const source = (paneIndex === 1) ? paneA : paneB, target = (paneIndex === 1) ? paneB : paneA;
-            target.scrollTop = source.scrollTop; target.scrollLeft = source.scrollLeft;
+            if (!document.getElementById('sync-scroll').checked || isSyncingScroll) return;
+            isSyncingScroll = true;
+
+            const paneA = document.getElementById('compare-pane-1');
+            const paneB = document.getElementById('compare-pane-2');
+            
+            const source = (paneIndex === 1) ? paneA : paneB;
+            const target = (paneIndex === 1) ? paneB : paneA;
+
+            target.scrollTop = source.scrollTop;
+            target.scrollLeft = source.scrollLeft;
+
             setTimeout(() => { isSyncingScroll = false; }, 20);
         }
-		
-		function removeVietnameseTones(str) {
-    return str.normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .replace(/đ/g, "d")
-              .replace(/Đ/g, "D");
-}
-
     </script>
 </body>
 </html>
