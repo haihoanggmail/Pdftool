@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Suite by Hải Hoàng 09-1800-1944</title>
-    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+    <!-- Nhập các thư viện chuẩn hóa cho cả hai file -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/@pdf-lib/fontkit/dist/fontkit.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     
     <style>
@@ -87,7 +89,6 @@
             align-items: center; justify-content: center; position: relative; transition: border-color 0.2s;
         }
         
-        /* Chế độ Grid bình thường cho phép kéo thả sắp xếp trang */
         .page-box.sortable-mode { cursor: grab; }
         .page-box.sortable-mode:active { cursor: grabbing; }
         .page-box.dragging { opacity: 0.4; transform: scale(0.95); }
@@ -97,7 +98,6 @@
         .page-box canvas { display: block; max-width: 100%; height: auto; }
         .page-info { margin-top: 10px; font-size: 13px; font-weight: bold; color: #323130; pointer-events: none; }
         
-        /* WATERMARK TRỰC QUAN (INTERACTIVE MOCKUP) */
         .mockup-watermark {
             position: absolute;
             z-index: 10;
@@ -110,7 +110,6 @@
             padding: 4px;
         }
 
-        /* Form nhóm các bộ lọc */
         .inline-group { display: flex; gap: 8px; margin-bottom: 8px; }
         .inline-group > div { flex: 1; }
         .inline-group label { font-size: 11px; font-weight: 600; color: #555; display: block; margin-bottom: 2px; }
@@ -143,17 +142,111 @@
         .radio-label { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 4px 0; }
         
         .about-container { padding: 40px; display: flex; width: 100%; justify-content: space-between; background: white; }
+    
+        /* TAB: CHỈNH SỬA PDF MỚI */
+        .editor-layout { display:flex; width:100%; height:100%; overflow:hidden; }
+        .editor-sidebar { width:300px; flex-shrink:0; padding:12px; overflow-y:auto; background:#f7f8fa; border-right:1px solid #d2d0ce; box-sizing:border-box; }
+        .editor-main { flex:1; min-width:0; display:flex; flex-direction:column; background:#e9edf2; }
+        .editor-stage-scroll { flex:1; overflow:auto; padding:24px; text-align:center; position: relative; }
+        
+        .editor-container-shell {
+            position: relative;
+            display: inline-block;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            line-height: 0;
+        }
+        #editor-pdf-canvas { display: block; }
+        #editor-draw-canvas { position: absolute; top:0; left:0; pointer-events: auto; z-index: 5; }
+        
+        /* Lớp tương tác chữ */
+        .editor-text-layer {
+            position: absolute;
+            left: 0; top: 0; right: 0; bottom: 0;
+            overflow: hidden;
+            opacity: 1;
+            line-height: 1.0;
+            z-index: 6;
+        }
+        .editor-text-layer.drawing-active {
+            pointer-events: none;
+            opacity: 0.5;
+        }
+        .editor-text-layer span {
+            color: transparent;
+            position: absolute;
+            white-space: pre;
+            cursor: move;
+            transform-origin: 0% 0%;
+            user-select: none;
+            box-sizing: border-box;
+            z-index: 2;
+            pointer-events: auto;
+        }
+        .editor-text-layer span:hover {
+            background-color: rgba(0, 90, 158, 0.1) !important;
+            outline: 1px dashed var(--primary);
+        }
+        .editor-text-layer span.modified {
+            color: #000 !important;
+            background-color: transparent !important;
+            outline: 1px solid rgba(0, 90, 158, 0.3);
+        }
+        .editor-text-layer span.dragging {
+            opacity: 0.8;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+            z-index: 100;
+        }
+        
+        /* Lớp mặt nạ che chữ cũ gốc */
+        .original-mask {
+            position: absolute;
+            background-color: #ffffff !important;
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        /* Ô nhập liệu trực tiếp */
+        .editing-input {
+            position: absolute;
+            border: 1px dashed var(--primary);
+            background: #ffffff;
+            color: #000 !important;
+            font-family: inherit;
+            padding: 0; margin: 0;
+            outline: none;
+            z-index: 10;
+        }
+
+        /* Lớp định dạng In Đậm / In Nghiêng nhanh cho chữ */
+        .editor-text-layer span.is-bold { font-weight: bold !important; }
+        .editor-text-layer span.is-italic { font-style: italic !important; }
+        .editing-input.is-bold { font-weight: bold !important; }
+        .editing-input.is-italic { font-style: italic !important; }
+
+        .editor-pagebar { display:flex; align-items:center; justify-content:center; gap:10px; padding:8px; background:white; border-top:1px solid #d2d0ce; }
+        .editor-pagebar button { width:auto; margin:0; }
+        .editor-hint { font-size:11px; color:#605e5c; line-height:1.45; margin:6px 0 0; }
+        
+        /* Khung chọn công cụ vẽ */
+        .draw-tools-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 8px; }
+        .btn-tool { background-color: #f0f0f0; color: #333; border: 1px solid #cbd5e1; }
+        .btn-tool:hover { background-color: #e2e8f0; }
+        .btn-tool.active { background-color: var(--primary); color: white; border-color: var(--primary); }
+        .brush-status { font-size: 11px; font-weight: bold; color: var(--primary); margin-top: 4px; text-align: center; }
     </style>
 </head>
 <body>
 
     <div class="nav-tabs">
-        <button class="tab-btn active" onclick="switchTab('tab-main', this)">↻ Sửa & Sắp Xếp</button>
+        <button class="tab-btn active" onclick="switchTab('tab-main', this)">↻ Xoay & Sắp Xếp</button>
         <button class="tab-btn" onclick="switchTab('tab-merge', this)">🗂️ Gộp File</button>
         <button class="tab-btn" onclick="switchTab('tab-compare', this)">⚖️ Chế độ So Sánh</button>
+        <button class="tab-btn" onclick="switchTab('tab-editor', this)">✏️ Chỉnh Sửa PDF</button>
         <button class="tab-btn" onclick="switchTab('tab-about', this)">ℹ️ Giới Thiệu</button>
     </div>
 
+    <!-- TAB 1: Sắp xếp -->
     <div id="tab-main" class="tab-content active">
         <div class="main-container">
             <div class="left-panel">
@@ -170,8 +263,7 @@
                         <input type="checkbox" id="wm-enable" onchange="toggleWatermarkMockup()"> Kích hoạt Đóng Dấu Bản Quyền
                     </label>
                     
-                    <!--<div id="wm-settings-block" style="opacity: 0.4; pointer-events: none; transition: opacity 0.2s;">-->
-					<div id="wm-settings-block" style="display: none; pointer-events: none; transition: opacity 0.2s;">
+					<div id="wm-settings-block" style="display: none; transition: opacity 0.2s;">
                         <div style="margin-bottom: 8px;">
                             <input type="text" id="wm-text" value="HACHIHI.VN" placeholder="Nhập nội dung không dấu..." oninput="updateWatermarkStyles()">
                         </div>
@@ -211,15 +303,18 @@
                 </div>
 
                 <div class="card">
-                    <p class="card-title">2. Chọn trang xoay giấy</p>
+                    <p class="card-title">2. Chọn trang thao tác</p>
                     <input type="text" id="pages-input" placeholder="ví dụ: 3 hoặc 1-5 hoặc 3,5,8">
                 </div>
+
                 <div class="card">
-                    <p class="card-title">3. Thao tác xoay trang</p>
+                    <p class="card-title">3. Thao tác trang</p>
                     <button class="btn" onclick="rotate(90)">Xoay Phải 90° ↻</button>
                     <button class="btn" onclick="rotate(-90)">Xoay Trái 90° ↺</button>
+                    <button class="btn btn-warning" onclick="mirrorPages()">↔️ Lật Gương (Mirror)</button>
                     <button class="btn" id="undo-btn" onclick="undo()" style="margin-top:5px; background-color:#605e5c" disabled>↩ Hoàn tác sắp xếp</button>
                 </div>
+
                 <div class="card" style="margin-top: auto;">
                     <p class="card-title">4. Xuất bản</p>
                     <button class="btn btn-success" onclick="savePDF()">💾 LƯU FILE MỚI</button>
@@ -258,6 +353,7 @@
         </div>
     </div>
 
+    <!-- TAB 2: Gộp -->
     <div id="tab-merge" class="tab-content">
         <div class="main-container">
             <div class="left-panel">
@@ -283,6 +379,7 @@
         </div>
     </div>
 
+    <!-- TAB 3: So sánh -->
     <div id="tab-compare" class="tab-content">
         <div class="main-container">
             <div class="left-panel">
@@ -345,19 +442,87 @@
         </div>
     </div>
 
+    <!-- TAB CHỈNH SỬA PDF -->
+    <div id="tab-editor" class="tab-content">
+        <div class="editor-layout">
+            <div class="editor-sidebar">
+                <div class="card">
+                    <p class="card-title">1. Mở tài liệu sửa chữ</p>
+                    <input type="file" id="editor-file-input" accept="application/pdf" style="display:none" onchange="editorLoadFile(this)">
+                    <button class="btn" onclick="document.getElementById('editor-file-input').click()">📁 Mở File PDF</button>
+                    <div id="editor-file-status" style="font-size:12px;color:gray;word-break:break-all">Chưa chọn file.</div>
+                </div>
+
+                <div class="card">
+                    <p class="card-title">🎨 CÔNG CỤ VẼ & SỬA</p>
+                    <div class="draw-tools-grid">
+                        <button class="btn btn-small btn-tool active" id="tool-text" onclick="setEditorTool('text')">🔤 Chọn Chữ</button>
+                        <button class="btn btn-small btn-tool" id="tool-free" onclick="setEditorTool('free')">✏️ Vẽ Tự Do</button>
+                        <button class="btn btn-small btn-tool" id="tool-line" onclick="setEditorTool('line')">📏 Đường Thẳng</button>
+                        <button class="btn btn-small btn-tool" id="tool-rect" onclick="setEditorTool('rect')">⬜ Hình Vuông</button>
+                        <button class="btn btn-small btn-tool" id="tool-ellipse" onclick="setEditorTool('ellipse')">⭕ Hình Elip</button>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label style="font-size:11px; font-weight:600; color:#555;">Màu nét vẽ:</label>
+                        <input type="color" id="editor-stroke-color" value="#ff0000" style="width:100%; height:32px; padding:0; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer;" onchange="updateBrushPreview()">
+                    </div>
+                    <div class="brush-status" id="brush-size-status">Độ dày nét: 3px (Cuộn chuột để thay đổi)</div>
+                </div>
+
+                <div class="card">
+                    <p class="card-title">✏️ PHÍM TẮT & HƯỚNG DẪN</p>
+                    <p class="editor-hint" style="font-size:12.5px; color:#333; line-height: 1.5;">
+                        • <b>Sửa & Định dạng Chữ:</b><br>
+                        - Click đúp chữ để sửa.<br>
+                        - Nhấn <b>Ctrl + B</b> để in đậm chữ.<br>
+                        - Nhấn <b>Ctrl + I</b> để in nghiêng chữ.<br>
+                        • <b>Hoàn Tác (Undo):</b><br>
+                        - Nhấn <b>Ctrl + Z</b> để xóa hình vẽ lỗi gần nhất, hoặc hoàn tác chữ vừa di chuyển/chỉnh sửa.<br>
+                        • <b>Cọ Vẽ:</b> Cuộn chuột trên trang để tăng/giảm nét vẽ nhanh chóng.
+                    </p>
+                </div>
+
+                <div class="card" style="margin-top:auto">
+                    <p class="card-title">2. Xuất PDF</p>
+                    <button class="btn btn-success" id="editor-download-btn" onclick="editorExportPDF()" disabled>💾 XUẤT FILE ĐÃ SỬA CHỮ</button>
+                </div>
+            </div>
+
+            <div class="editor-main">
+                <div class="editor-stage-scroll">
+                    <div id="editor-empty" style="color:#666;margin-top:60px">Mở PDF để bắt đầu chỉnh sửa văn bản trực tiếp.</div>
+                    <div id="editor-page-shell" class="editor-container-shell" style="display:none">
+                        <canvas id="editor-pdf-canvas"></canvas>
+                        <canvas id="editor-draw-canvas"></canvas>
+                        <div id="editor-text-layer" class="editor-text-layer"></div>
+                    </div>
+                </div>
+
+                <div class="editor-pagebar">
+                    <button class="btn btn-small" onclick="editorChangePage(-1)">◀ Trước</button>
+                    <span id="editor-page-indicator" style="font-weight:bold">0 / 0</span>
+                    <button class="btn btn-small" onclick="editorChangePage(1)">Sau ▶</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB Giới thiệu -->
     <div id="tab-about" class="tab-content">
         <div class="about-container">
             <div class="about-left">
                 <h1 style="color: var(--primary); margin-top:0; display: inline-flex; align-items: center; gap: 10px;">
-    <img src="https://hachihi.vn/image/685127b6335b176a5328fbaf/thumbnail.jpg" alt="Logo" style="height: 80px; width: auto;" onerror="this.style.display='none'">
-    <span>PDF SUITE - By Hachihi.vn</span>
-</h1>
+                    <img src="https://hachihi.vn/favicon.ico" alt="Logo" style="height: 40px; width: auto;" onerror="this.style.display='none'">
+                    <span>PDF SUITE - By Hachihi.vn</span>
+                </h1>
                 <p style="font-style: italic; color: var(--primary-hover);">Phiên bản free V020726 - support : Hải Hoàng 09-1800-1944</p>
                 <hr style="border:0; border-top: 1px solid #d2d0ce; margin: 20px 0;">
                 <p><b>💡 TÍNH NĂNG :</b></p>
                 <ul style="line-height: 1.6;">
                     <li><b>Xoay trang , sắp xếp Kéo-Thả (Drag & Drop):</b> Trực quan thay đổi thứ tự tài liệu. WATERMARK</li>
                     <li><b>So Sánh Tuyệt Đối (Strict Compare):</b> Cho phép đặt chồng hai tài liệu lên nhau và ẩn/hiện từng lớp theo ý muốn để không bao giờ bị mờ mắt khi đối chiếu văn bản chỉnh sửa.</li>
+                    <li><b>Chỉnh Sửa Văn Bản Tiếng Việt:</b> Cho phép kéo thả chữ trực tiếp, tự động che đè chữ cũ bằng mặt nạ thông minh, nạp font Unicode tiếng Việt mượt mà.</li>
+                    <li><b>Tích hợp bộ công cụ vẽ chuyên sâu:</b> Hỗ trợ vẽ tự do, vẽ đường thẳng, hình vuông, hình tròn elip chuẩn vector với nét vẽ tùy biến bằng cuộn chuột.</li>
                     <li><b>Hoàn toàn Client-Side:</b> Bảo mật tuyệt đối 100%.</li>
                 </ul>
             </div>
@@ -370,13 +535,14 @@
         // --- Khai báo biến hệ thống ---
         let originalPdfBytes = null;
         let pageRotations = []; 
+        let pageMirrors = []; // Mới: Lưu trạng thái lật gương của từng trang (true/false)
         let pageOrder = [];     
         let historyStack = [];  
         let currentRenderTaskId = 0;
         let currentPageStartIndex = 0; 
         let dragSourceIndex = null; 
 
-        // --- Tọa độ tương đối của Watermark (% từ Top và Left của khung chứa) ---
+        // --- Tọa độ tương đối của Watermark ---
         let wmRelativeLeft = 30; 
         let wmRelativeTop = 40;
         let isDraggingWatermark = false;
@@ -388,16 +554,16 @@
             document.getElementById(tabId).classList.add('active');
             btn.classList.add('active');
             if (tabId === 'tab-compare') setTimeout(renderCompare, 100);
+            if (tabId === 'tab-editor' && editorPdfJsDoc) setTimeout(editorRenderPage, 100);
         }
 
         // ==========================================
-        // TIỆN ÍCH: HỖ TRỢ FILE ẢNH (JPG/PNG/WEBP/BMP/GIF...)
+        // TIỆN ÍCH: HỖ TRỢ FILE ẢNH
         // ==========================================
         function isImageFile(file) {
             return file && file.type && file.type.indexOf('image/') === 0;
         }
 
-        // Chuyển 1 file ảnh bất kỳ mà trình duyệt đọc được thành bytes PNG (qua canvas)
         function imageFileToPngBytes(file) {
             return new Promise(function(resolve, reject) {
                 const url = URL.createObjectURL(file);
@@ -423,7 +589,6 @@
             });
         }
 
-        // Đọc 1 File thành Uint8Array
         function readFileAsBytes(file) {
             return new Promise(function(resolve, reject) {
                 const reader = new FileReader();
@@ -433,8 +598,6 @@
             });
         }
 
-        // Chuyển 1 file ảnh thành 1 file PDF 1 trang (kích thước trang = kích thước ảnh)
-        // để toàn bộ pipeline PDF hiện có (xoay, watermark, gộp, so sánh) dùng lại được luôn.
         async function imageFileToPdfBytes(file) {
             const pdfDoc = await PDFLib.PDFDocument.create();
             let embeddedImage;
@@ -447,12 +610,10 @@
                 } else if (mime === 'image/png') {
                     embeddedImage = await pdfDoc.embedPng(rawBytes);
                 } else {
-                    // Định dạng khác (webp, bmp, gif, ...) -> vẽ qua canvas rồi nhúng dưới dạng PNG
                     const pngBytes = await imageFileToPngBytes(file);
                     embeddedImage = await pdfDoc.embedPng(pngBytes);
                 }
             } catch (e) {
-                // Nếu nhúng trực tiếp thất bại (VD file .jpg lỗi header), thử lại qua canvas
                 const pngBytes = await imageFileToPngBytes(file);
                 embeddedImage = await pdfDoc.embedPng(pngBytes);
             }
@@ -463,7 +624,6 @@
             return await pdfDoc.save();
         }
 
-        // Hàm dùng chung: trả về Uint8Array của PDF cho dù input là PDF hay ảnh
         async function fileToPdfBytes(file) {
             if (isImageFile(file)) {
                 return await imageFileToPdfBytes(file);
@@ -474,60 +634,27 @@
         // ==========================================
         // KHU VỰC 1: SỬA & SẮP XẾP + WATERMARK (TAB 1)
         // ==========================================
-        function toggleWatermarkMockup_mo() {
+		function toggleWatermarkMockup() {
             const isEnabled = document.getElementById('wm-enable').checked;
             const settingsBlock = document.getElementById('wm-settings-block');
             const mockups = document.querySelectorAll('.mockup-watermark');
             
             if (isEnabled) {
-                settingsBlock.style.opacity = "1";
-                settingsBlock.style.pointerEvents = "auto";
+                settingsBlock.style.display = "block";
                 mockups.forEach(m => m.style.display = "block");
-                // Tắt tính năng kéo xếp trang để tránh xung đột chuột với kéo watermark
                 document.querySelectorAll('.page-box').forEach(b => b.classList.remove('sortable-mode'));
             } else {
-                settingsBlock.style.opacity = "0.4";
-                settingsBlock.style.pointerEvents = "none";
+                settingsBlock.style.display = "none";
                 mockups.forEach(m => m.style.display = "none");
-                // Bật lại chế độ xếp trang
                 document.querySelectorAll('.page-box').forEach(b => b.classList.add('sortable-mode'));
             }
             updateWatermarkStyles();
         }
-		
-		function toggleWatermarkMockup() {
-    const isEnabled = document.getElementById('wm-enable').checked;
-    const settingsBlock = document.getElementById('wm-settings-block');
-    const mockups = document.querySelectorAll('.mockup-watermark');
-    
-    if (isEnabled) {
-        // KHI CHECK: Hiện toàn bộ khối cấu hình lên
-        settingsBlock.style.display = "block";
-        settingsBlock.style.pointerEvents = "auto";
-        mockups.forEach(m => m.style.display = "block");
-        
-        // Tắt tính năng kéo xếp trang để ưu tiên kéo watermark
-        document.querySelectorAll('.page-box').forEach(b => b.classList.remove('sortable-mode'));
-    } else {
-        // KHI BỎ CHECK: Ẩn hoàn toàn khối cấu hình đi
-        settingsBlock.style.display = "none";
-        settingsBlock.style.pointerEvents = "none";
-        mockups.forEach(m => m.style.display = "none");
-        
-        // Bật lại chế độ xếp trang bình thường
-        document.querySelectorAll('.page-box').forEach(b => b.classList.add('sortable-mode'));
-    }
-    updateWatermarkStyles();
-}
 
         function updateWatermarkStyles() {
-            <!--const text = document.getElementById('wm-text').value;-->
 			const input = document.getElementById('wm-text');
-
-			// Tự động bỏ dấu
 			const text = removeVietnameseTones(input.value);
 
-			// Nếu người dùng nhập có dấu thì cập nhật lại ô nhập
 			if (input.value !== text) {
 				input.value = text;
 			}
@@ -548,8 +675,6 @@
                 m.style.opacity = opacity;
                 m.style.fontWeight = isBold ? 'bold' : 'normal';
                 m.style.fontStyle = isItalic ? 'italic' : 'normal';
-                
-                // Định vị lại theo % chiều cao/chiều rộng của khối bọc nó
                 m.style.left = wmRelativeLeft + "%";
                 m.style.top = wmRelativeTop + "%";
             });
@@ -580,11 +705,9 @@
                     let newLeftPx = currentLeftPx + deltaX;
                     let newTopPx = currentTopPx + deltaY;
 
-                    // Chuyển đổi ngược sang tỷ lệ %
                     wmRelativeLeft = (newLeftPx / wrapperRect.width) * 100;
                     wmRelativeTop = (newTopPx / wrapperRect.height) * 100;
 
-                    // Đồng bộ lên toàn bộ các trang hiển thị
                     updateWatermarkStyles();
                 }
 
@@ -600,14 +723,16 @@
         }
 
         function saveToHistory() {
-            historyStack.push({ rotations: [...pageRotations], order: [...pageOrder] });
+            historyStack.push({ rotations: [...pageRotations], mirrors: [...pageMirrors], order: [...pageOrder] });
             document.getElementById('undo-btn').disabled = false;
         }
 
         function undo() {
             if (historyStack.length === 0) return;
             const state = historyStack.pop();
-            pageRotations = state.rotations; pageOrder = state.order;
+            pageRotations = state.rotations; 
+            pageMirrors = state.mirrors || state.rotations.map(() => false);
+            pageOrder = state.order;
             if (historyStack.length === 0) document.getElementById('undo-btn').disabled = true;
             renderGrid();
         }
@@ -628,10 +753,11 @@
             const pdfDocLib = await PDFLib.PDFDocument.load(originalPdfBytes.slice(0));
             const pageCount = pdfDocLib.getPageCount();
 
-            pageRotations = []; pageOrder = [];
+            pageRotations = []; pageOrder = []; pageMirrors = [];
             for(let i=0; i<pageCount; i++) {
                 pageOrder.push(i);
                 pageRotations.push(pdfDocLib.getPages()[i].getRotation().angle);
+                pageMirrors.push(false);
             }
             historyStack = []; document.getElementById('undo-btn').disabled = true;
             currentPageStartIndex = 0; renderGrid();
@@ -671,6 +797,17 @@
             renderGrid();
         }
 
+        async function mirrorPages() {
+            if (!originalPdfBytes) { alert("Vui lòng mở file PDF trước!"); return; }
+            saveToHistory();
+            const targetPages = parsePagesInput(pageMirrors.length);
+            if (targetPages.length === 0) return;
+            targetPages.forEach(pIdx => {
+                pageMirrors[pIdx] = !pageMirrors[pIdx];
+            });
+            renderGrid();
+        }
+
         function updateViewMode() {
             const mode = document.getElementById('view-mode').value;
             const container = document.getElementById('grid-container');
@@ -690,7 +827,6 @@
             renderGrid();
         }
 
-        // Kéo thả đổi vị trí trang tài liệu
         function handleDragStart(e) { if(document.getElementById('wm-enable').checked) return; dragSourceIndex = parseInt(this.getAttribute('data-index')); e.dataTransfer.effectAllowed = 'move'; this.classList.add('dragging'); }
         function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return false; }
         function handleDragEnter(e) { if(!document.getElementById('wm-enable').checked) this.classList.add('drag-over'); }
@@ -705,6 +841,8 @@
                 pageOrder.splice(dropTargetIndex, 0, movedPage);
                 const movedRotation = pageRotations.splice(dragSourceIndex, 1)[0];
                 pageRotations.splice(dropTargetIndex, 0, movedRotation);
+                const movedMirror = pageMirrors.splice(dragSourceIndex, 1)[0];
+                pageMirrors.splice(dropTargetIndex, 0, movedMirror);
                 renderGrid();
             }
             return false;
@@ -766,7 +904,6 @@
 
                 wrapper.appendChild(canvas);
                 
-                // Gắn thành phần chữ mờ tương tác (Watermark Mockup) vào từng trang
                 const mWatermark = document.createElement('div');
                 mWatermark.className = "mockup-watermark";
                 setupWatermarkDragging(mWatermark);
@@ -774,10 +911,17 @@
 
                 box.appendChild(wrapper);
                 const info = document.createElement('div'); info.className = "page-info";
-                info.innerText = `Trang ${i}`; box.appendChild(info);
+                info.innerText = `Trang ${i}` + (pageMirrors[globalIndex] ? " (Lật)" : ""); box.appendChild(info);
                 container.appendChild(box);
 
                 await page.render({ canvasContext: context, viewport: viewport }).promise;
+                
+                // Nếu trang kích hoạt lật gương, xử lý lật canvas hiển thị trực quan
+                if(pageMirrors[globalIndex]) {
+                    canvas.style.transform = "scaleX(-1)";
+                } else {
+                    canvas.style.transform = "none";
+                }
             }
             updateWatermarkStyles();
             if(wmEnabled) {
@@ -785,7 +929,6 @@
             }
         }
 
-        // --- Hàm mã hóa Hex sang RGB để cấp cho PDF-Lib ---
         function hexToRgb(hex) {
             var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
             return result ? {
@@ -795,11 +938,8 @@
             } : { r: 0, g: 0, b: 0 };
         }
 
-        // XUẤT FILE HOÀN CHỈNH: GỘP THAO TÁC XOAY VÀ ĐÓNG DẤU THỰC SỰ VÀO FILE
         async function savePDF() {
-		logAction("save_pdf");
-
-		
+		    logAction("save_pdf");
             if (!originalPdfBytes) return;
             const originalDoc = await PDFLib.PDFDocument.load(originalPdfBytes.slice(0));
             const mergedPdfDoc = await PDFLib.PDFDocument.create(); 
@@ -807,7 +947,6 @@
             const copiedPages = await mergedPdfDoc.copyPages(originalDoc, pageOrder);
             
             const wmEnabled = document.getElementById('wm-enable').checked;
-            <!--const wmText = document.getElementById('wm-text').value;-->
 			const wmText = removeVietnameseTones(document.getElementById('wm-text').value);
             const wmSize = parseInt(document.getElementById('wm-size').value);
             const wmColorHex = document.getElementById('wm-color').value;
@@ -818,60 +957,53 @@
             
             const rgbColor = hexToRgb(wmColorHex);
 
-            // Chọn font chữ chuẩn có sẵn trong PDF-Lib
             let chosenFont = await mergedPdfDoc.embedStandardFont(PDFLib.StandardFonts.Helvetica);
             if (isBold && isItalic) chosenFont = await mergedPdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBoldOblique);
             else if (isBold) chosenFont = await mergedPdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBold);
             else if (isItalic) chosenFont = await mergedPdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaOblique);
 
+            copiedPages.forEach((page, idx) => {
+                const currentPageRotation = pageRotations[idx] || 0;
+                
+                // Nếu có yêu cầu lật gương tài liệu bằng scale hệ trục tọa độ
+                if (pageMirrors[idx]) {
+                    page.translate(page.getWidth(), 0);
+                    page.scale(-1, 1);
+                }
+                
+                page.setRotation(PDFLib.degrees(0));
+                
+                if (wmEnabled && wmText.trim() !== "") {
+                    const { width, height } = page.getSize();
+                    let pdfX = (wmRelativeLeft / 100) * width;
+                    let pdfY = height - ((wmRelativeTop / 100) * height);
 
-copiedPages.forEach((page, idx) => {
-    // Lấy góc xoay gốc của trang giấy từ mảng lưu trữ
-    const currentPageRotation = pageRotations[idx] || 0;
-    
-    // BƯỚC 1: Tạm thời đưa góc xoay của trang về 0 độ để đóng dấu phẳng chuẩn 100% như Web
-    page.setRotation(PDFLib.degrees(0));
-    
-    if (wmEnabled && wmText.trim() !== "") {
-        const { width, height } = page.getSize();
-        
-        // Tính tọa độ X, Y tuyệt đối theo tỉ lệ % từ giao diện Web
-        let pdfX = (wmRelativeLeft / 100) * width;
-        let pdfY = height - ((wmRelativeTop / 100) * height); // Đảo trục Y cho PDF
+                    if (currentPageRotation === 90 || currentPageRotation === 270) {
+                        pdfX = (wmRelativeTop / 100) * width;
+                        pdfY = height - ((wmRelativeLeft / 100) * height);
+                    }
 
-        // BƯỚC 2: Kiểm tra nếu trang gốc bị xoay 90 hoặc 270 độ (đổi chiều dọc/ngang)
-        // Ta cần hoán đổi vị trí X và Y tương ứng để không bị lệch tâm
-        if (currentPageRotation === 90 || currentPageRotation === 270) {
-            pdfX = (wmRelativeTop / 100) * width;
-            pdfY = height - ((wmRelativeLeft / 100) * height);
-        }
+                    let finalRotation = -wmRotationDeg; 
 
-        // BƯỚC 3: Vẽ chữ với đúng góc xoay người dùng nhập (Đổi dấu góc xoay nếu cần)
-        // Trong PDF, góc dương là quay ngược chiều kim đồng hồ, nếu trên Web bạn thấy ngược,
-        // chỉ cần thêm dấu trừ (-) trước wmRotationDeg là xong.
-        let finalRotation = -wmRotationDeg; 
-
-        page.drawText(wmText, {
-            x: pdfX,
-            y: pdfY,
-            size: wmSize,
-            font: chosenFont,
-            color: PDFLib.rgb(rgbColor.r, rgbColor.g, rgbColor.b),
-            rotate: PDFLib.degrees(finalRotation), 
-            opacity: wmOpacity,
-        });
-    }
-    
-    // BƯỚC 4: Cuối cùng mới xoay toàn bộ trang giấy (bao gồm cả chữ vừa vẽ) về đúng hướng của nó
-    page.setRotation(PDFLib.degrees(currentPageRotation));
-    
-    mergedPdfDoc.addPage(page);
-});
+                    page.drawText(wmText, {
+                        x: pdfX,
+                        y: pdfY,
+                        size: wmSize,
+                        font: chosenFont,
+                        color: PDFLib.rgb(rgbColor.r, rgbColor.g, rgbColor.b),
+                        rotate: PDFLib.degrees(finalRotation), 
+                        opacity: wmOpacity,
+                    });
+                }
+                
+                page.setRotation(PDFLib.degrees(currentPageRotation));
+                mergedPdfDoc.addPage(page);
+            });
 
             const modifiedPdfBytes = await mergedPdfDoc.save();
             const blob = new Blob([modifiedPdfBytes], { type: "application/pdf" });
             const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
-            link.download = "tai_lieu_da_dong_dau_ban_quyen.pdf"; link.click();
+            link.download = "tai_lieu_da_chinh_sua.pdf"; link.click();
         }
 
         // ==========================================
@@ -918,8 +1050,7 @@ copiedPages.forEach((page, idx) => {
         function deleteMergeFile(index) { mergeFilesArray.splice(index, 1); renderMergeList(); }
         function clearMergeList() { mergeFilesArray = []; renderMergeList(); }
         async function generateMergedPDF() {
-				logAction("goppdf") 
-		
+			logAction("goppdf") 
             if (mergeFilesArray.length < 2) return;
             const mergedPdfDoc = await PDFLib.PDFDocument.create();
             for (const fileObj of mergeFilesArray) {
@@ -939,7 +1070,7 @@ copiedPages.forEach((page, idx) => {
         // ==========================================
         let compareDoc1 = null, compareDoc2 = null, currentComparePage = 0, maxComparePages = 0, compareRenderTaskId = 0;
         async function loadCompareFile(input, fileNum) {
-		logAction("compare_pdf");
+		    logAction("compare_pdf");
             const file = input.files[0]; if (!file) return;
             document.getElementById(`compare-status-${fileNum}`).innerText = "✓ " + file.name;
             document.getElementById(`compare-status-${fileNum}`).style.color = "var(--success)";
@@ -992,7 +1123,7 @@ copiedPages.forEach((page, idx) => {
                 const canvasOverlayA = document.createElement('canvas'); canvasOverlayA.id = 'canvas-overlay-A'; canvasOverlayA.className = 'overlay-canvas'; canvasOverlayA.height = vpA.height; canvasOverlayA.width = vpA.width; wrapperContent.appendChild(canvasOverlayA);
                 pageA.render({ canvasContext: canvasOverlayA.getContext('2d'), viewport: vpA });
             }
-if (compareDoc2 && currentComparePage <= compareDoc2.numPages) {
+            if (compareDoc2 && currentComparePage <= compareDoc2.numPages) {
                 const pageB = await compareDoc2.getPage(currentComparePage); if (taskId !== compareRenderTaskId) return;
                 const vpB = pageB.getViewport({ scale: scaleFactor });
                 let canvasB = document.createElement('canvas'); canvasB.height = vpB.height; canvasB.width = vpB.width; pane2.appendChild(canvasB);
@@ -1010,26 +1141,673 @@ if (compareDoc2 && currentComparePage <= compareDoc2.numPages) {
             target.scrollTop = source.scrollTop; target.scrollLeft = source.scrollLeft;
             setTimeout(() => { isSyncingScroll = false; }, 20);
         }
-		
-		function removeVietnameseTones(str) {
-    return str.normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .replace(/đ/g, "d")
-              .replace(/Đ/g, "D");
-}
 
+        // ==================================================================
+        // KHU VỰC CHỈNH SỬA VĂN BẢN (TAB EDITOR) + TÍNH NĂNG VẼ HÌNH
+        // ==================================================================
+        let editorPdfDataBytes = null;
+        let editorPdfJsDoc = null;
+        let editorPage = 1;
+        let editorViewport = null;
+        let editorScale = 1.5;
+        
+        let modifiedTexts = []; 
+        let editorCurrentTool = 'text'; // 'text', 'free', 'line', 'rect', 'ellipse'
+        let editorShapes = []; // Mảng lưu các hình vẽ: { page, type, color, size, points, startX, startY, endX, endY }
+        
+        let isDrawingShape = false;
+        let brushSize = 3; // Kích thước nét mặc định
+        let currentDrawShape = null;
 
-function logAction(action) {
+        function setEditorTool(toolName) {
+            editorCurrentTool = toolName;
+            document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active'));
+            document.getElementById(`tool-${toolName}`).classList.add('active');
+            
+            const textLayer = document.getElementById('editor-text-layer');
+            if (toolName === 'text') {
+                textLayer.classList.remove('drawing-active');
+            } else {
+                textLayer.classList.add('drawing-active');
+            }
+            updateBrushPreview();
+        }
 
-    fetch("https://script.google.com/macros/s/AKfycbxP1LuGZJ3qeNwa7ou-aAqFa01dX3P2uDWyRnpzb_Jec2OY0nc2OwuxFEInQNOaDnvU/exec", {
-        method: "POST",
-        body: new URLSearchParams({
-            action: action
-        })
-    });
+        function updateBrushPreview() {
+            document.getElementById('brush-size-status').innerText = `Độ dày nét: ${brushSize}px (Cuộn chuột để thay đổi)`;
+        }
 
-}
+        // Tích hợp LẮNG NGHE PHÍM TẮT Ctrl+Z cho toàn bộ ứng dụng (khi ở Tab Editor)
+        document.addEventListener('keydown', function(e) {
+            // Kiểm tra xem tab editor đang hiển thị hoạt động hay không
+            const isEditorActive = document.getElementById('tab-editor').classList.contains('active');
+            if (!isEditorActive) return;
 
+            // Xử lý hoàn tác (Undo) bằng Ctrl + Z
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                
+                // Trường hợp 1: Nếu đang chọn vẽ hình, Undo nét vẽ lỗi gần nhất
+                if (editorCurrentTool !== 'text') {
+                    if (editorShapes.length > 0) {
+                        editorShapes.pop(); // Xóa hình vẽ cuối cùng
+                        redrawPageShapes();
+                    }
+                } 
+                // Trường hợp 2: Nếu đang ở chế độ chỉnh văn bản, Undo chỉnh sửa văn bản gần nhất
+                else {
+                    if (modifiedTexts.length > 0) {
+                        modifiedTexts.pop(); // Hoàn tác chỉnh sửa chữ mới nhất
+                        editorRenderPage();  // Vẽ lại layer chữ để cập nhật giao diện
+                    }
+                }
+            }
+        });
+
+        // Khởi tạo các sự kiện cho Canvas Vẽ
+        function initDrawCanvasEvents() {
+            const dCanvas = document.getElementById('editor-draw-canvas');
+            const ctx = dCanvas.getContext('2d');
+
+            // Xử lý sự kiện scroll chuột tăng giảm size cọ vẽ
+            dCanvas.addEventListener('wheel', (e) => {
+                if (editorCurrentTool === 'text') return;
+                e.preventDefault();
+                if (e.deltaY < 0) {
+                    brushSize = Math.min(50, brushSize + 1); // Max 50px
+                } else {
+                    brushSize = Math.max(1, brushSize - 1);  // Min 1px
+                }
+                updateBrushPreview();
+                redrawPageShapes();
+            }, { passive: false });
+
+            // Mousedown vẽ hình
+            dCanvas.addEventListener('mousedown', (e) => {
+                if (editorCurrentTool === 'text') return;
+                isDrawingShape = true;
+                const rect = dCanvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                const strokeColor = document.getElementById('editor-stroke-color').value;
+
+                currentDrawShape = {
+                    page: editorPage,
+                    type: editorCurrentTool,
+                    color: strokeColor,
+                    size: brushSize,
+                    startX: mouseX,
+                    startY: mouseY,
+                    endX: mouseX,
+                    endY: mouseY,
+                    points: [{x: mouseX, y: mouseY}] // Dành cho vẽ tự do
+                };
+            });
+
+            // Mousemove
+            dCanvas.addEventListener('mousemove', (e) => {
+                if (!isDrawingShape || !currentDrawShape) return;
+                const rect = dCanvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                currentDrawShape.endX = mouseX;
+                currentDrawShape.endY = mouseY;
+
+                if (currentDrawShape.type === 'free') {
+                    currentDrawShape.points.push({x: mouseX, y: mouseY});
+                }
+
+                redrawPageShapes();
+                // Vẽ nháp hình hiện tại lên canvas
+                ctx.strokeStyle = currentDrawShape.color;
+                ctx.lineWidth = currentDrawShape.size;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                
+                drawSingleShape(ctx, currentDrawShape);
+            });
+
+            // Mouseup
+            window.addEventListener('mouseup', () => {
+                if (isDrawingShape && currentDrawShape) {
+                    isDrawingShape = false;
+                    editorShapes.push(currentDrawShape);
+                    currentDrawShape = null;
+                    redrawPageShapes();
+                }
+            });
+        }
+
+        function drawSingleShape(ctx, shape) {
+            ctx.beginPath();
+            if (shape.type === 'free') {
+                if (shape.points.length < 2) return;
+                ctx.moveTo(shape.points[0].x, shape.points[0].y);
+                for (let p of shape.points) {
+                    ctx.lineTo(p.x, p.y);
+                }
+                ctx.stroke();
+            } else if (shape.type === 'line') {
+                ctx.moveTo(shape.startX, shape.startY);
+                ctx.lineTo(shape.endX, shape.endY);
+                ctx.stroke();
+            } else if (shape.type === 'rect') {
+                const w = shape.endX - shape.startX;
+                const h = shape.endY - shape.startY;
+                ctx.strokeRect(shape.startX, shape.startY, w, h);
+            } else if (shape.type === 'ellipse') {
+                const rx = Math.abs(shape.endX - shape.startX) / 2;
+                const ry = Math.abs(shape.endY - shape.startY) / 2;
+                const cx = (shape.startX + shape.endX) / 2;
+                const cy = (shape.startY + shape.endY) / 2;
+                ctx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+        }
+
+        function redrawPageShapes() {
+            const dCanvas = document.getElementById('editor-draw-canvas');
+            if (!dCanvas) return;
+            const ctx = dCanvas.getContext('2d');
+            ctx.clearRect(0, 0, dCanvas.width, dCanvas.height);
+
+            // Duyệt vẽ tất cả các hình thuộc trang hiện tại
+            editorShapes.filter(s => s.page === editorPage).forEach(shape => {
+                ctx.strokeStyle = shape.color;
+                ctx.lineWidth = shape.size;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                drawSingleShape(ctx, shape);
+            });
+        }
+
+        async function editorLoadFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            document.getElementById('editor-file-status').innerText = 'Đang đọc...';
+            const reader = new FileReader();
+            reader.onload = async function() {
+                editorPdfDataBytes = this.result.slice(0);
+                modifiedTexts = [];
+                editorShapes = []; // Reset mảng hình vẽ khi mở file mới
+                editorPage = 1;
+                
+                try {
+                    editorPdfJsDoc = await pdfjsLib.getDocument({data: new Uint8Array(editorPdfDataBytes.slice(0))}).promise;
+                    document.getElementById('editor-file-status').innerText = '✓ ' + file.name;
+                    document.getElementById('editor-file-status').style.color = 'var(--success)';
+                    document.getElementById('editor-empty').style.display = 'none';
+                    document.getElementById('editor-page-shell').style.display = 'inline-block';
+                    document.getElementById('editor-download-btn').disabled = false;
+                    
+                    initDrawCanvasEvents();
+                    await editorRenderPage();
+                } catch(e) {
+                    alert("Lỗi phân tích cú pháp PDF: " + e.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function editorRenderPage() {
+            if (!editorPdfJsDoc) return;
+            const page = await editorPdfJsDoc.getPage(editorPage);
+            editorViewport = page.getViewport({ scale: editorScale });
+
+            const canvas = document.getElementById('editor-pdf-canvas');
+            const dCanvas = document.getElementById('editor-draw-canvas');
+            const textLayerDiv = document.getElementById('editor-text-layer');
+            
+            canvas.height = editorViewport.height;
+            canvas.width = editorViewport.width;
+            
+            dCanvas.height = editorViewport.height;
+            dCanvas.width = editorViewport.width;
+
+            const renderContext = {
+                canvasContext: canvas.getContext('2d'),
+                viewport: editorViewport
+            };
+            await page.render(renderContext).promise;
+
+            const textContent = await page.getTextContent();
+            
+            textLayerDiv.innerHTML = '';
+            textLayerDiv.style.width = canvas.width + 'px';
+            textLayerDiv.style.height = canvas.height + 'px';
+
+            document.getElementById('editor-page-indicator').innerText = `${editorPage} / ${editorPdfJsDoc.numPages}`;
+
+            textContent.items.forEach((item, index) => {
+                const span = document.createElement('span');
+                const tx = pdfjsLib.Util.transform(editorViewport.transform, item.transform);
+
+                span.textContent = item.str;
+                span.style.fontFamily = 'Helvetica, Arial, sans-serif';
+                span.style.fontSize = `${item.height * editorScale}px`;
+                span.style.left = `${tx[4]}px`;
+                span.style.top = `${tx[5] - (item.height * editorScale)}px`;
+                
+                const key = `${editorPage}_${index}`;
+                const savedChange = modifiedTexts.find(m => m.key === key);
+                if (savedChange) {
+                    span.textContent = savedChange.text;
+                    span.style.left = `${savedChange.htmlLeft}px`;
+                    span.style.top = `${savedChange.htmlTop}px`;
+                    span.classList.add('modified');
+                    
+                    if (savedChange.isBold) span.classList.add('is-bold');
+                    if (savedChange.isItalic) span.classList.add('is-italic');
+                    
+                    maskOriginalPosition(index, item, tx);
+                }
+
+                enableDragAndEdit(span, item, index, tx);
+                textLayerDiv.appendChild(span);
+            });
+            
+            redrawPageShapes();
+        }
+
+        function editorChangePage(dir) {
+            if (!editorPdfJsDoc) return;
+            let targetPage = editorPage + dir;
+            if (targetPage >= 1 && targetPage <= editorPdfJsDoc.numPages) {
+                editorPage = targetPage;
+                editorRenderPage();
+            }
+        }
+
+        function maskOriginalPosition(index, originalItem, tx) {
+            const textLayerDiv = document.getElementById('editor-text-layer');
+            if (textLayerDiv.querySelector(`.original-mask[data-index="${index}"]`)) return;
+
+            const mask = document.createElement('div');
+            mask.className = 'original-mask';
+            mask.setAttribute('data-index', index);
+            
+            const origWidth = originalItem.width * editorScale;
+            const origHeight = originalItem.height * editorScale;
+
+            mask.style.left = `${tx[4] - 2}px`;
+            mask.style.top = `${tx[5] - origHeight - 2}px`;
+            mask.style.width = `${origWidth + 6}px`;
+            mask.style.height = `${origHeight + 4}px`;
+            
+            textLayerDiv.appendChild(mask);
+        }
+
+        function enableDragAndEdit(span, originalItem, index, tx) {
+            let isDragging = false;
+            let hasMoved = false;
+            let startX, startY;
+            let startLeft, startTop;
+            const textLayerDiv = document.getElementById('editor-text-layer');
+
+            span.addEventListener('mousedown', (e) => {
+                if (editorCurrentTool !== 'text') return; // Không cho tương tác kéo chữ nếu đang chọn công cụ vẽ
+                if (e.button !== 0) return; 
+                if (textLayerDiv.querySelector(`.editing-input[data-index="${index}"]`)) return;
+
+                isDragging = true;
+                hasMoved = false;
+                startX = e.clientX;
+                startY = e.clientY;
+                startLeft = parseFloat(span.style.left);
+                startTop = parseFloat(span.style.top);
+
+                document.body.style.userSelect = 'none'; 
+
+                const onMouseMove = (ev) => {
+                    if (!isDragging) return;
+                    const dx = ev.clientX - startX;
+                    const dy = ev.clientY - startY;
+
+                    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+                        hasMoved = true;
+                    }
+
+                    if (hasMoved) {
+                        span.style.left = `${startLeft + dx}px`;
+                        span.style.top = `${startTop + dy}px`;
+                        span.classList.add('dragging');
+                        span.classList.add('modified');
+
+                        maskOriginalPosition(index, originalItem, tx);
+                    }
+                };
+
+                const onMouseUp = () => {
+                    isDragging = false;
+                    document.body.style.userSelect = '';
+                    span.classList.remove('dragging');
+
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+
+                    if (hasMoved) {
+                        savePositionAndText(span, originalItem, index);
+                    }
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            span.addEventListener('dblclick', () => {
+                if (editorCurrentTool !== 'text') return;
+                makeEditable(span, originalItem, index, tx);
+            });
+        }
+
+        function savePositionAndText(span, originalItem, index) {
+            const htmlLeft = parseFloat(span.style.left);
+            const htmlTop = parseFloat(span.style.top);
+            const y_viewport = htmlTop + (originalItem.height * editorScale);
+            const [pdfX, pdfY] = editorViewport.convertToPdfPoint(htmlLeft, y_viewport);
+
+            const key = `${editorPage}_${index}`;
+            const existingIndex = modifiedTexts.findIndex(item => item.key === key);
+
+            const isBold = span.classList.contains('is-bold');
+            const isItalic = span.classList.contains('is-italic');
+
+            const changeData = {
+                key: key,
+                page: editorPage,
+                index: index,
+                text: span.textContent,
+                origX: originalItem.transform[4],
+                origY: originalItem.transform[5],
+                origWidth: originalItem.width,
+                origHeight: originalItem.height,
+                x: pdfX,    
+                y: pdfY,
+                fontSize: originalItem.height,
+                htmlLeft: htmlLeft,
+                htmlTop: htmlTop,
+                isBold: isBold,
+                isItalic: isItalic
+            };
+
+            if (existingIndex !== -1) {
+                // Giữ nguyên text cũ nếu chỉ kéo vị trí
+                changeData.text = modifiedTexts[existingIndex].text;
+                modifiedTexts[existingIndex] = changeData;
+            } else {
+                modifiedTexts.push(changeData);
+            }
+        }
+
+        function makeEditable(span, originalItem, index, tx) {
+            const textLayerDiv = document.getElementById('editor-text-layer');
+            if (textLayerDiv.querySelector(`.editing-input[data-index="${index}"]`)) return;
+
+            const currentText = span.textContent;
+            const input = document.createElement('input');
+            input.className = 'editing-input';
+            input.setAttribute('data-index', index);
+            input.value = currentText;
+
+            input.style.left = span.style.left;
+            input.style.top = span.style.top;
+            input.style.fontSize = span.style.fontSize;
+            input.style.fontFamily = span.style.fontFamily;
+            input.style.width = (span.offsetWidth + 30) + 'px';
+            
+            if (span.classList.contains('is-bold')) input.classList.add('is-bold');
+            if (span.classList.contains('is-italic')) input.classList.add('is-italic');
+
+            textLayerDiv.appendChild(input);
+            input.focus();
+
+            // Lắng nghe phím tắt Ctrl+B và Ctrl+I trong ô nhập chữ
+            input.addEventListener('keydown', (e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    if (e.key.toLowerCase() === 'b') {
+                        e.preventDefault();
+                        input.classList.toggle('is-bold');
+                        span.classList.toggle('is-bold');
+                    }
+                    if (e.key.toLowerCase() === 'i') {
+                        e.preventDefault();
+                        input.classList.toggle('is-italic');
+                        span.classList.toggle('is-italic');
+                    }
+                }
+            });
+
+            const saveChange = () => {
+                const newText = input.value;
+                span.textContent = newText;
+                
+                const isBold = input.classList.contains('is-bold');
+                const isItalic = input.classList.contains('is-italic');
+
+                input.remove();
+
+                span.classList.add('modified');
+                maskOriginalPosition(index, originalItem, tx);
+
+                const htmlLeft = parseFloat(span.style.left);
+                const htmlTop = parseFloat(span.style.top);
+                const y_viewport = htmlTop + (originalItem.height * editorScale);
+                const [pdfX, pdfY] = editorViewport.convertToPdfPoint(htmlLeft, y_viewport);
+
+                const key = `${editorPage}_${index}`;
+                const existingIndex = modifiedTexts.findIndex(item => item.key === key);
+                
+                const changeData = {
+                    key: key,
+                    page: editorPage,
+                    index: index,
+                    text: newText,
+                    origX: originalItem.transform[4],
+                    origY: originalItem.transform[5],
+                    origWidth: originalItem.width,
+                    origHeight: originalItem.height,
+                    x: pdfX,
+                    y: pdfY,
+                    fontSize: originalItem.height,
+                    htmlLeft: htmlLeft,
+                    htmlTop: htmlTop,
+                    isBold: isBold,
+                    isItalic: isItalic
+                };
+
+                if (existingIndex !== -1) {
+                    modifiedTexts[existingIndex] = changeData;
+                } else {
+                    modifiedTexts.push(changeData);
+                }
+            };
+
+            input.addEventListener('blur', saveChange);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') saveChange();
+            });
+        }
+
+        async function fetchFontWithFallback(style) {
+            // Định tuyến tìm font chuẩn xác tùy thuộc trạng thái Bold/Italic
+            let fontName = "Roboto-Regular.ttf";
+            if (style === "bolditalic") fontName = "Roboto-BoldItalic.ttf";
+            else if (style === "bold") fontName = "Roboto-Bold.ttf";
+            else if (style === "italic") fontName = "Roboto-Italic.ttf";
+
+            const urls = [
+                `https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/${fontName}`,
+                `https://cdn.jsdelivr.net/npm/pdfmake@0.1.66/fonts/Roboto/${fontName}`,
+                `https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/roboto/static/${fontName}`
+            ];
+
+            for (const url of urls) {
+                try {
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const bytes = await response.arrayBuffer();
+                        if (bytes.byteLength > 1000) {
+                            return bytes;
+                        }
+                    }
+                } catch (err) {
+                    console.warn(`Thử tải font từ ${url} không thành công...`);
+                }
+            }
+            throw new Error("Không thể tải xuống Font chữ Unicode dự phòng.");
+        }
+
+        async function editorExportPDF() {
+            if (!editorPdfDataBytes) return;
+            logAction("edit_pdf");
+
+            const btn = document.getElementById('editor-download-btn');
+            btn.textContent = 'Đang xử lý xuất PDF...';
+            btn.disabled = true;
+
+            try {
+                const pdfDoc = await PDFLib.PDFDocument.load(editorPdfDataBytes);
+                
+                if (typeof fontkit !== 'undefined') {
+                    pdfDoc.registerFontkit(fontkit);
+                } else {
+                    throw new Error("Không tìm thấy bộ tiện ích thư viện Fontkit.");
+                }
+
+                const pages = pdfDoc.getPages();
+                
+                // Nạp sẵn các kiểu Font Unicode khác nhau
+                const regularFontBytes = await fetchFontWithFallback("regular");
+                const regularFont = await pdfDoc.embedFont(regularFontBytes);
+
+                const boldFontBytes = await fetchFontWithFallback("bold");
+                const boldFont = await pdfDoc.embedFont(boldFontBytes);
+
+                const italicFontBytes = await fetchFontWithFallback("italic");
+                const italicFont = await pdfDoc.embedFont(italicFontBytes);
+
+                const boldItalicFontBytes = await fetchFontWithFallback("bolditalic");
+                const boldItalicFont = await pdfDoc.embedFont(boldItalicFontBytes);
+
+                // 1. Vẽ đè và cập nhật văn bản tiếng Việt
+                modifiedTexts.forEach(change => {
+                    const pageIndex = change.page - 1;
+                    const pageObj = pages[pageIndex];
+                    const descenderOffset = change.fontSize * 0.25;
+
+                    pageObj.drawRectangle({
+                        x: change.origX - 2,
+                        y: change.origY - descenderOffset,
+                        width: change.origWidth + 4,
+                        height: change.fontSize + descenderOffset + 2,
+                        color: PDFLib.rgb(1, 1, 1),
+                    });
+
+                    // Quyết định Font phù hợp dựa trên cờ isBold/isItalic
+                    let targetFont = regularFont;
+                    if (change.isBold && change.isItalic) targetFont = boldItalicFont;
+                    else if (change.isBold) targetFont = boldFont;
+                    else if (change.isItalic) targetFont = italicFont;
+
+                    pageObj.drawText(change.text, {
+                        x: change.x,
+                        y: change.y,
+                        size: change.fontSize,
+                        font: targetFont,
+                        color: PDFLib.rgb(0, 0, 0)
+                    });
+                });
+
+                // 2. Vẽ tất cả các hình học vector lên file PDF
+                editorShapes.forEach(shape => {
+                    const pageObj = pages[shape.page - 1];
+                    const rgb = hexToRgb(shape.color);
+                    const pdfLibColor = PDFLib.rgb(rgb.r, rgb.g, rgb.b);
+                    const finalThickness = shape.size / editorScale; // Quy đổi độ dày tỷ lệ chuẩn PDF
+
+                    // Chuyển đổi điểm bắt đầu và điểm kết thúc từ viewport HTML sang PDF Point
+                    const [pStartX, pStartY] = editorViewport.convertToPdfPoint(shape.startX, shape.startY);
+                    const [pEndX, pEndY] = editorViewport.convertToPdfPoint(shape.endX, shape.endY);
+
+                    if (shape.type === 'line') {
+                        pageObj.drawLine({
+                            start: { x: pStartX, y: pStartY },
+                            end: { x: pEndX, y: pEndY },
+                            thickness: finalThickness,
+                            color: pdfLibColor,
+                        });
+                    } else if (shape.type === 'rect') {
+                        const lowX = Math.min(pStartX, pEndX);
+                        const lowY = Math.min(pStartY, pEndY);
+                        const w = Math.abs(pStartX - pEndX);
+                        const h = Math.abs(pStartY - pEndY);
+                        pageObj.drawRectangle({
+                            x: lowX, y: lowY,
+                            width: w, height: h,
+                            borderWidth: finalThickness,
+                            borderColor: pdfLibColor,
+                            borderOpacity: 1
+                        });
+                    } else if (shape.type === 'ellipse') {
+                        const cx = (pStartX + pEndX) / 2;
+                        const cy = (pStartY + pEndY) / 2;
+                        const rx = Math.abs(pStartX - pEndX) / 2;
+                        const ry = Math.abs(pStartY - pEndY) / 2;
+                        
+                        pageObj.drawCircle({
+                            x: cx, y: cy,
+                            size: Math.max(rx, ry),
+                            borderWidth: finalThickness,
+                            borderColor: pdfLibColor,
+                            borderOpacity: 1
+                        });
+                    } else if (shape.type === 'free') {
+                        if (shape.points.length < 2) return;
+                        for (let k = 0; k < shape.points.length - 1; k++) {
+                            const [pt1X, pt1Y] = editorViewport.convertToPdfPoint(shape.points[k].x, shape.points[k].y);
+                            const [pt2X, pt2Y] = editorViewport.convertToPdfPoint(shape.points[k+1].x, shape.points[k+1].y);
+                            pageObj.drawLine({
+                                start: { x: pt1X, y: pt1Y },
+                                end: { x: pt2X, y: pt2Y },
+                                thickness: finalThickness,
+                                color: pdfLibColor,
+                            });
+                        }
+                    }
+                });
+
+                const modifiedPdfBytes = await pdfDoc.save();
+                const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'tai_lieu_chinh_sua_co_hinh_ve.pdf';
+                link.click();
+            } catch (error) {
+                console.error(error);
+                alert('Lỗi xuất file: ' + error.message);
+            } finally {
+                btn.textContent = '💾 XUẤT FILE ĐÃ SỬA CHỮ';
+                btn.disabled = false;
+            }
+        }
+
+        function removeVietnameseTones(str) {
+            return str.normalize("NFD")
+                      .replace(/[\u0300-\u036f]/g, "")
+                      .replace(/đ/g, "d")
+                      .replace(/Đ/g, "D");
+        }
+
+        function logAction(action) {
+            fetch("https://script.google.com/macros/s/AKfycbxP1LuGZJ3qeNwa7ou-aAqFa01dX3P2uDWyRnpzb_Jec2OY0nc2OwuxFEInQNOaDnvU/exec", {
+                method: "POST",
+                body: new URLSearchParams({
+                    action: action
+                })
+            });
+        }
     </script>
 </body>
 </html>
