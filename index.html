@@ -588,6 +588,12 @@
     </div>
 
     <script>
+        // Đăng ký fontkit với pdf-lib để xử lý font tùy chỉnh
+        const { PDFDocument } = PDFLib;
+        // Thêm dòng này trước khi xử lý PDF
+        PDFDocument.prototype.registerFontkit(fontkit);
+
+
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
         // --- Khai báo biến hệ thống ---
@@ -1808,7 +1814,8 @@ async function getUnicodeFontBytes(style = "regular") {
     }
 }
 
-        async function editorExportPDF() {
+
+async function editorExportPDF() {
             if (!editorPdfDataBytes) return;
             logAction("edit_pdf");
 
@@ -1827,28 +1834,31 @@ async function getUnicodeFontBytes(style = "regular") {
 
                 const pages = pdfDoc.getPages();
                 
-				// Dùng font Unicode (Roboto) để giữ được dấu tiếng Việt khi xuất file
-				let regularFont, boldFont, italicFont, boldItalicFont;
-				try {
-					const regularBytes    = await getUnicodeFontBytes("regular");
-					const boldBytes       = await getUnicodeFontBytes("bold");
-					const italicBytes     = await getUnicodeFontBytes("italic");
-					const boldItalicBytes = await getUnicodeFontBytes("bolditalic");
+                // Dùng font Unicode (Roboto) để giữ được dấu tiếng Việt khi xuất file
+                let regularFont, boldFont, italicFont, boldItalicFont;
+                try {
+                    // Tải trực tiếp font từ thư mục local /fonts/ của dự án
+                    const [regularBytes, boldBytes, italicBytes, boldItalicBytes] = await Promise.all([
+                        fetch('./fonts/Roboto-Regular.ttf').then(res => { if(!res.ok) throw new Error(); return res.arrayBuffer(); }),
+                        fetch('./fonts/Roboto-Bold.ttf').then(res => { if(!res.ok) throw new Error(); return res.arrayBuffer(); }),
+                        fetch('./fonts/Roboto-Italic.ttf').then(res => { if(!res.ok) throw new Error(); return res.arrayBuffer(); }),
+                        fetch('./fonts/Roboto-BoldItalic.ttf').then(res => { if(!res.ok) throw new Error(); return res.arrayBuffer(); })
+                    ]);
 
-					regularFont    = await pdfDoc.embedFont(regularBytes,    { subset: true });
-					boldFont       = await pdfDoc.embedFont(boldBytes,       { subset: true });
-					italicFont     = await pdfDoc.embedFont(italicBytes,     { subset: true });
-					boldItalicFont = await pdfDoc.embedFont(boldItalicBytes, { subset: true });
-				} catch (fontError) {
-					console.warn("Không tải được font Unicode Roboto, chuyển sang font Helvetica dự phòng (sẽ mất dấu tiếng Việt):", fontError);
-					alert("Cảnh báo: Không tải được font Unicode qua mạng, văn bản có dấu tiếng Việt chỉnh sửa có thể bị mất dấu khi xuất file. Vui lòng kiểm tra kết nối mạng và thử lại.");
-				//regularFont    = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.Helvetica);
-				//	#boldFont       = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBold);
-				//	#italicFont     = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaOblique);
-				//	#boldItalicFont = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBoldOblique);
-				
-				
-				}
+                    regularFont    = await pdfDoc.embedFont(regularBytes,    { subset: true });
+                    boldFont       = await pdfDoc.embedFont(boldBytes,       { subset: true });
+                    italicFont     = await pdfDoc.embedFont(italicBytes,     { subset: true });
+                    boldItalicFont = await pdfDoc.embedFont(boldItalicBytes, { subset: true });
+                } catch (fontError) {
+                    console.warn("Không tải được font Unicode Roboto, chuyển sang font Helvetica dự phòng (sẽ mất dấu tiếng Việt):", fontError);
+                    alert("Cảnh báo: Không tải được font Unicode từ thư mục hệ thống, văn bản có dấu tiếng Việt chỉnh sửa có thể bị mất dấu khi xuất file.");
+                    
+                    // Bật lại font dự phòng Helvetica của hệ thống nếu tải font ngoài lỗi để tránh crash ứng dụng
+                    regularFont    = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.Helvetica);
+                    boldFont       = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBold);
+                    italicFont     = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaOblique);
+                    boldItalicFont = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBoldOblique);
+                }
 
                 // 1. Vẽ đè và cập nhật văn bản tiếng Việt
                 modifiedTexts.forEach(change => {
@@ -1875,7 +1885,7 @@ async function getUnicodeFontBytes(style = "regular") {
                         x: change.x,
                         y: change.y,
                         size: change.fontSize,
-                        font: targetFont,
+                        font: targetFont, // <--- Đã áp dụng font Unicode Roboto vừa tải ở trên
                         color: PDFLib.rgb(0, 0, 0)
                     });
                 });
@@ -1957,6 +1967,11 @@ async function getUnicodeFontBytes(style = "regular") {
                 btn.disabled = false;
             }
         }
+
+
+
+
+
 
         function removeVietnameseTones(str) {
             return str.normalize("NFD")
