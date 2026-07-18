@@ -1835,7 +1835,7 @@ async function editorExportPDF() {
 
                 const pages = pdfDoc.getPages();
                 
-                // Tải trực tiếp font từ thư mục /fonts/ của dự án để sửa lỗi mất chữ tiếng Việt
+                // Tải trực tiếp font từ thư mục /fonts/ để hiển thị đầy đủ chữ ĐƠN ĐẶT HÀNG
                 let regularFont, boldFont, italicFont, boldItalicFont;
                 try {
                     const [regularBytes, boldBytes, italicBytes, boldItalicBytes] = await Promise.all([
@@ -1850,8 +1850,8 @@ async function editorExportPDF() {
                     italicFont     = await pdfDoc.embedFont(italicBytes,     { subset: true });
                     boldItalicFont = await pdfDoc.embedFont(boldItalicBytes, { subset: true });
                 } catch (fontError) {
-                    console.warn("Không tải được font Unicode Roboto, chuyển sang font Helvetica dự phòng (sẽ mất dấu tiếng Việt):", fontError);
-                    alert("Cảnh báo: Không tải được font Unicode từ thư mục hệ thống, văn bản có dấu tiếng Việt chỉnh sửa có thể bị mất dấu khi xuất file.");
+                    console.warn("Không tải được font từ thư mục fonts/, chuyển sang font Helvetica dự phòng:", fontError);
+                    alert("Cảnh báo: Không tìm thấy file font Roboto trong thư mục fonts/. Vui lòng kiểm tra lại đường dẫn file.");
                     
                     regularFont    = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.Helvetica);
                     boldFont       = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBold);
@@ -1964,8 +1964,6 @@ async function editorExportPDF() {
                 btn.disabled = false;
             }
         }
-        
-
 
 
 
