@@ -542,6 +542,11 @@
         let currentPageStartIndex = 0; 
         let dragSourceIndex = null; 
 
+		// --- Các biến lưu tên file gốc riêng biệt cho từng Tab ---
+        let mainFileName = '';      // Cho Tab 1: Xoay & Sắp xếp
+        let editorFileName = '';    // Cho Tab 4: Chỉnh sửa văn bản
+		
+
         // --- Tọa độ tương đối của Watermark ---
         let wmRelativeLeft = 30; 
         let wmRelativeTop = 40;
@@ -737,11 +742,16 @@
             renderGrid();
         }
 
-        async function loadPDF(input) {
-            const file = input.files[0];
-            if (!file) return;
-            document.getElementById('file-status').innerText = "✓ " + file.name;
-            document.getElementById('file-status').style.color = "var(--success)";
+		async function loadPDF(input) {
+		            const file = input.files[0];
+		            if (!file) return;
+		            
+		            // Lưu lại tên file gốc của Tab 1 (bỏ đuôi .pdf)
+		            mainFileName = file.name.replace(/\.pdf$/i, ''); 
+		
+		            document.getElementById('file-status').innerText = "✓ " + file.name;
+		            document.getElementById('file-status').style.color = "var(--success)";
+	
 
             try {
                 originalPdfBytes = await fileToPdfBytes(file);
@@ -1000,10 +1010,15 @@
                 mergedPdfDoc.addPage(page);
             });
 
-            const modifiedPdfBytes = await mergedPdfDoc.save();
+const modifiedPdfBytes = await mergedPdfDoc.save();
             const blob = new Blob([modifiedPdfBytes], { type: "application/pdf" });
-            const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
-            link.download = "tai_lieu_da_chinh_sua.pdf"; link.click();
+            const link = document.createElement('a'); 
+            link.href = URL.createObjectURL(blob);
+            
+            // SỬA TẠI ĐÂY: Đặt tên mặc định cố định cho file gộp
+            link.download = 'tai_lieu_gop_tong_hop.pdf';
+            
+            link.click();
         }
 
         // ==========================================
@@ -1062,10 +1077,10 @@
             const modifiedPdfBytes = await mergedPdfDoc.save();
             const blob = new Blob([modifiedPdfBytes], { type: "application/pdf" });
             const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
-            // tên file cũ thêm _edit.pdf, nếu không có tên cũ thì dùng tên mặc định
-        const finalFileName = currentEditorFileName ? `${currentEditorFileName}_edit.pdf` : 'tai_lieu_edit.pdf';
-        link.download = finalFileName;
-			link.click();
+// SỬA LẠI ĐOẠN NÀY THÀNH TÊN CỐ ĐỊNH:
+    link.download = 'tai_lieu_gop_tong_hop.pdf';
+    
+    link.click();
         }
 
         // ==========================================
@@ -1328,14 +1343,14 @@
 			// tên file gốc (bỏ .pdf)
 			let currentEditorFileName = '';
 			
-			async function editorLoadFile(input) {
-			    const file = input.files[0];
-			    if (!file) return;
-			    
-			    // Lưu lại tên file gốc và cắt bỏ chữ ".pdf" ở đuôi
-			    currentEditorFileName = file.name.replace(/\.pdf$/i, ''); 
-			    
-			    document.getElementById('editor-file-status').innerText = 'Đang đọc...';
+async function editorLoadFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    // SỬA LẠI THÀNH:
+    editorFileName = file.name.replace(/\.pdf$/i, ''); 
+    
+    document.getElementById('editor-file-status').innerText = 'Đang đọc...';
 
 	
             const reader = new FileReader();
@@ -1785,8 +1800,12 @@
                 const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
-                link.download = 'tai_lieu_chinh_sua_co_hinh_ve.pdf';
+// Sử dụng biến editorFileName của Tab 4
+                const finalFileName = editorFileName ? `${editorFileName}_edit.pdf` : 'tai_lieu_chinh_sua.pdf';
+                link.download = finalFileName;
+                
                 link.click();
+				
             } catch (error) {
                 console.error(error);
                 alert('Lỗi xuất file: ' + error.message);
