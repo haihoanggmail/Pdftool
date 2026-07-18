@@ -1990,7 +1990,7 @@ async function editorExportPDF() {
                 })
             });
         }
-function printEditorStage() {
+function printEditorStage1() {
     const pdfCanvas = document.getElementById('editor-pdf-canvas');
     const drawCanvas = document.getElementById('editor-draw-canvas');
     const textLayer = document.getElementById('editor-text-layer');
@@ -2103,6 +2103,111 @@ function printEditorStage() {
         printFrame.contentWindow.focus();
         printFrame.contentWindow.print();
     }, 500);
+}
+
+		function printEditorStage() {
+    const pdfCanvas = document.getElementById('editor-pdf-canvas');
+    const drawCanvas = document.getElementById('editor-draw-canvas');
+    const textLayer = document.getElementById('editor-text-layer');
+
+    if (!pdfCanvas) {
+        alert("Chưa có tài liệu để in!");
+        return;
+    }
+
+    // 1. Tạo một canvas phụ để gộp Nền PDF + Nét vẽ (nếu có)
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = pdfCanvas.width;
+    tempCanvas.height = pdfCanvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    // Vẽ nền PDF gốc
+    tempCtx.drawImage(pdfCanvas, 0, 0);
+    // Vẽ đè các nét vẽ hoặc hình khối lên trên
+    if (drawCanvas) {
+        tempCtx.drawImage(drawCanvas, 0, 0);
+    }
+
+    // Chuyển toàn bộ thành một tấm ảnh duy nhất
+    const combinedImgData = tempCanvas.toDataURL('image/png');
+
+    // 2. Lấy toàn bộ CSS của trang web hiện tại để nạp vào cửa sổ in
+    let styles = '';
+    for (let styleSheet of document.styleSheets) {
+        try {
+            for (let rule of styleSheet.cssRules) {
+                styles += rule.cssText;
+            }
+        } catch (e) { }
+    }
+
+    // --- ĐOẠN TỰ ĐỘNG TẠO TÊN FILE THEO QUY LUẬT ---
+    const now = new Date();
+    const dateStr = now.getDate() + '-' + (now.getMonth() + 1) + '-' + now.getFullYear();
+    const timeStr = now.getHours() + 'h' + now.getMinutes();
+    const customTitle = `Don_hang_da_sua_${dateStr}_${timeStr}`; 
+
+    // 3. GIẢI PHÁP CHO GOOGLE SITES: Mở hẳn một tab/cửa sổ mới độc lập, không dùng iframe phụ
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) {
+        alert("Trình duyệt đã chặn cửa sổ Bật lên (Popup). Vui lòng cho phép hiện Popup trên Google Sites để in!");
+        return;
+    }
+
+    // 4. Bơm nội dung ảnh + chữ có dấu vào cửa sổ mới này
+    printWindow.document.open();
+    printWindow.document.write(`
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>${customTitle}</title>
+            <style>
+                ${styles}
+                body { margin: 0; padding: 0; background: #fff; }
+                .print-wrapper {
+                    position: relative;
+                    width: ${pdfCanvas.width}px;
+                    height: ${pdfCanvas.height}px;
+                    margin: 0 auto;
+                }
+                .print-img {
+                    position: absolute;
+                    top: 0; left: 0; width: 100%; height: 100%;
+                    z-index: 1;
+                }
+                .editor-text-layer {
+                    position: absolute;
+                    top: 0; left: 0; width: 100%; height: 100%;
+                    z-index: 2;
+                    transform: none !important;
+                }
+                @media print {
+                    @page { size: auto; margin: 0mm; }
+                    body { margin: 0; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="print-wrapper">
+                <img src="${combinedImgData}" class="print-img" />
+                <div class="editor-text-layer">
+                    ${textLayer.innerHTML}
+                </div>
+            </div>
+            <script>
+                // Đợi hình ảnh tải xong trên tab mới rồi ra lệnh in, in xong tự đóng tab
+                window.onload = function() {
+                    setTimeout(() => {
+                        window.focus();
+                        window.print();
+                        window.close();
+                    }, 300);
+                };
+            <\/script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
 }
     </script>
 </body>
