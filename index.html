@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Suite by Hải Hoàng 09-1800-1944</title>
-    <!-- Nhập các thư viện chuẩn hóa cho cả hai file -->
+    <title>PDF tool by hachihi.vn - 0933842126, support by: Hải Hoàng 09-1800-1944</title>
+    <!-- lid-->
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://unpkg.com/@pdf-lib/fontkit/dist/fontkit.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -119,7 +119,7 @@
         .page-nav-btn:hover { background-color: var(--primary-hover); }
         .page-nav-btn:disabled { background-color: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
 
-        /* TAB 2: Gộp PDF */
+        /* T1: Gộp PDF */
         .file-list { flex: 1; background: #f3f2f1; border-radius: 4px; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
         .file-item { background: white; border: 1px solid #d2d0ce; border-radius: 4px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .file-item-info { display: flex; flex-direction: column; gap: 2px; }
@@ -127,7 +127,7 @@
         .file-item-meta { font-size: 12px; color: #605e5c; }
         .file-item-actions { display: flex; gap: 5px; align-items: center; }
 
-        /* TAB 3: SO SÁNH PDF */
+        /* T3: SO SÁNH PDF */
         .compare-view { display: flex; flex-direction: row; gap: 15px; position: relative; flex: 1; overflow: hidden; }
         .compare-pane { flex: 1; overflow-y: auto; overflow-x: auto; background: #f3f2f1; border: 1px solid #d2d0ce; border-radius: 4px; padding: 10px; text-align: center; }
         .compare-pane canvas { box-shadow: 0 2px 6px rgba(0,0,0,0.15); max-width: 100%; margin-bottom: 20px; background: white; }
@@ -143,7 +143,7 @@
         
         .about-container { padding: 40px; display: flex; width: 100%; justify-content: space-between; background: white; }
     
-        /* TAB: CHỈNH SỬA PDF MỚI */
+        /* T3: CHỈNH SỬA PDF MỚI */
         .editor-layout { display:flex; width:100%; height:100%; overflow:hidden; }
         .editor-sidebar { width:300px; flex-shrink:0; padding:12px; overflow-y:auto; background:#f7f8fa; border-right:1px solid #d2d0ce; box-sizing:border-box; }
         .editor-main { flex:1; min-width:0; display:flex; flex-direction:column; background:#e9edf2; }
@@ -159,7 +159,7 @@
         #editor-pdf-canvas { display: block; }
         #editor-draw-canvas { position: absolute; top:0; left:0; pointer-events: auto; z-index: 5; }
         
-        /* Lớp tương tác chữ */
+        /* chữ */
         .editor-text-layer {
             position: absolute;
             left: 0; top: 0; right: 0; bottom: 0;
@@ -198,7 +198,7 @@
             z-index: 100;
         }
         
-        /* Lớp mặt nạ che chữ cũ gốc */
+        /* mark chữ gốc */
         .original-mask {
             position: absolute;
             background-color: #ffffff !important;
@@ -206,7 +206,7 @@
             pointer-events: none;
         }
         
-        /* Ô nhập liệu trực tiếp */
+        /* nhập liệu */
         .editing-input {
             position: absolute;
             border: 1px dashed var(--primary);
@@ -218,7 +218,7 @@
             z-index: 10;
         }
 
-        /* Lớp định dạng In Đậm / In Nghiêng nhanh cho chữ */
+        /* định dạng In Đậm / In Nghiêng nhanh cho chữ */
         .editor-text-layer span.is-bold { font-weight: bold !important; }
         .editor-text-layer span.is-italic { font-style: italic !important; }
         .editing-input.is-bold { font-weight: bold !important; }
@@ -228,7 +228,7 @@
         .editor-pagebar button { width:auto; margin:0; }
         .editor-hint { font-size:11px; color:#605e5c; line-height:1.45; margin:6px 0 0; }
         
-        /* Khung chọn công cụ vẽ */
+        /* công cụ vẽ */
         .draw-tools-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 8px; }
         .btn-tool { background-color: #f0f0f0; color: #333; border: 1px solid #cbd5e1; }
         .btn-tool:hover { background-color: #e2e8f0; }
@@ -246,7 +246,7 @@
         <button class="tab-btn" onclick="switchTab('tab-about', this)">ℹ️ Giới Thiệu</button>
     </div>
 
-    <!-- TAB 1: Sắp xếp -->
+    <!-- T1: Sắp xếp -->
     <div id="tab-main" class="tab-content active">
         <div class="main-container">
             <div class="left-panel">
