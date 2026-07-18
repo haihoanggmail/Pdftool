@@ -562,16 +562,15 @@
 					<!-- THÊM NÚT in -->
     <button class="btn btn-small btn-warning" onclick="printEditorStage()" style="margin-left: 15px;">🖨️ IN TRANG NÀY</button>
 
-<!--					
+/*					
 <div class="editor-pagebar" style="position: sticky; bottom: 0; z-index: 100; background: white; box-shadow: 0 -2px 10px rgba(0,0,0,0.05);">
     <button class="btn btn-small" onclick="editorChangePage(-1)">◀ Trước</button>
     <span id="editor-page-indicator" style="font-weight:bold">0 / 0</span>
     <button class="btn btn-small" onclick="editorChangePage(1)">Sau ▶</button>
     <button class="btn btn-small btn-warning" onclick="printEditorStage()" style="margin-left: 15px;">🖨️ IN TRANG NÀY</button>
 </div>
--->				
-					
-	
+*/
+
 	
                 </div>
             </div>
@@ -2053,13 +2052,14 @@ function printEditorStage() {
     }
 
     // --- ĐOẠN TỰ ĐỘNG TẠO TÊN FILE THEO QUY LUẬT ---
-    <!--const now = new Date();
+    /*
+		const now = new Date();
     const dateStr = now.getDate() + '-' + (now.getMonth() + 1) + '-' + now.getFullYear();
     const timeStr = now.getHours() + 'h' + now.getMinutes();
     
     // Bạn có thể đổi chữ 'Don_hang_da_sua' thành bất cứ tên gì bạn muốn ở đây
     const customTitle = `Don_hang_da_sua_${dateStr}_${timeStr}`; 
-	-->
+	*/
 	const customTitle = editorFileName ? `${editorFileName}_edit` : 'tai_lieu_chinh_sua_edit';
 
     // 4. Bơm nội dung ảnh + chữ có dấu vào iframe (Đã thêm thẻ <title> để đổi tên file)
