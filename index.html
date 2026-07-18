@@ -1820,9 +1820,9 @@ async function editorExportPDF() {
             if (!editorPdfDataBytes) return;
             logAction("edit_pdf");
 
-            const btn = document.getElementById('editor-download-btn');
-            btn.textContent = 'Đang xử lý xuất PDF...';
-            btn.disabled = true;
+            //const btn = document.getElementById('editor-download-btn');
+            //btn.textContent = 'Đang xử lý xuất PDF...';
+            //btn.disabled = true;
 
             try {
                 const pdfDoc = await PDFLib.PDFDocument.load(editorPdfDataBytes);
@@ -1968,8 +1968,8 @@ async function editorExportPDF() {
                 console.error(error);
                 alert('Lỗi xuất file: ' + error.message);
             } finally {
-                btn.textContent = '💾 XUẤT FILE ĐÃ SỬA CHỮ';
-                btn.disabled = false;
+                //btn.textContent = '💾 XUẤT FILE ĐÃ SỬA CHỮ';
+                //btn.disabled = false;
             }
         }
 
