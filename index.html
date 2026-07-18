@@ -1815,6 +1815,7 @@ async function getUnicodeFontBytes(style = "regular") {
 }
 
 
+
 async function editorExportPDF() {
             if (!editorPdfDataBytes) return;
             logAction("edit_pdf");
@@ -1834,10 +1835,9 @@ async function editorExportPDF() {
 
                 const pages = pdfDoc.getPages();
                 
-                // Dùng font Unicode (Roboto) để giữ được dấu tiếng Việt khi xuất file
+                // Tải trực tiếp font từ thư mục /fonts/ của dự án để sửa lỗi mất chữ tiếng Việt
                 let regularFont, boldFont, italicFont, boldItalicFont;
                 try {
-                    // Tải trực tiếp font từ thư mục local /fonts/ của dự án
                     const [regularBytes, boldBytes, italicBytes, boldItalicBytes] = await Promise.all([
                         fetch('./fonts/Roboto-Regular.ttf').then(res => { if(!res.ok) throw new Error(); return res.arrayBuffer(); }),
                         fetch('./fonts/Roboto-Bold.ttf').then(res => { if(!res.ok) throw new Error(); return res.arrayBuffer(); }),
@@ -1853,7 +1853,6 @@ async function editorExportPDF() {
                     console.warn("Không tải được font Unicode Roboto, chuyển sang font Helvetica dự phòng (sẽ mất dấu tiếng Việt):", fontError);
                     alert("Cảnh báo: Không tải được font Unicode từ thư mục hệ thống, văn bản có dấu tiếng Việt chỉnh sửa có thể bị mất dấu khi xuất file.");
                     
-                    // Bật lại font dự phòng Helvetica của hệ thống nếu tải font ngoài lỗi để tránh crash ứng dụng
                     regularFont    = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.Helvetica);
                     boldFont       = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBold);
                     italicFont     = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaOblique);
@@ -1880,12 +1879,12 @@ async function editorExportPDF() {
                     else if (change.isBold) targetFont = boldFont;
                     else if (change.isItalic) targetFont = italicFont;
 
-                    // Giữ nguyên văn bản có dấu tiếng Việt (không xóa dấu nữa)
+                    // Giữ nguyên văn bản có dấu tiếng Việt
                     pageObj.drawText(change.text, {
                         x: change.x,
                         y: change.y,
                         size: change.fontSize,
-                        font: targetFont, // <--- Đã áp dụng font Unicode Roboto vừa tải ở trên
+                        font: targetFont,
                         color: PDFLib.rgb(0, 0, 0)
                     });
                 });
@@ -1895,9 +1894,8 @@ async function editorExportPDF() {
                     const pageObj = pages[shape.page - 1];
                     const rgb = hexToRgb(shape.color);
                     const pdfLibColor = PDFLib.rgb(rgb.r, rgb.g, rgb.b);
-                    const finalThickness = shape.size / editorScale; // Quy đổi độ dày tỷ lệ chuẩn PDF
+                    const finalThickness = shape.size / editorScale;
 
-                    // Chuyển đổi điểm bắt đầu và điểm kết thúc từ viewport HTML sang PDF Point
                     const [pStartX, pStartY] = editorViewport.convertToPdfPoint(shape.startX, shape.startY);
                     const [pEndX, pEndY] = editorViewport.convertToPdfPoint(shape.endX, shape.endY);
 
@@ -1953,7 +1951,6 @@ async function editorExportPDF() {
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
 
-                // Sử dụng biến editorFileName của Tab 4
                 const finalFileName = editorFileName ? `${editorFileName}_edit.pdf` : 'tai_lieu_chinh_sua.pdf';
                 link.download = finalFileName;
                 
@@ -1967,7 +1964,7 @@ async function editorExportPDF() {
                 btn.disabled = false;
             }
         }
-
+        
 
 
 
