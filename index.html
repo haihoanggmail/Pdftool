@@ -544,6 +544,13 @@
             </div>
 
             <div class="editor-main">
+			<div class="editor-pagebar" style="position: sticky; bottom: 0; z-index: 100; background: white; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); width: 100%; box-sizing: border-box;">
+                    <button class="btn btn-small" onclick="editorChangePage(-1)">◀ Trước</button>
+                    <span id="editor-page-indicator" style="font-weight:bold">0 / 0</span>
+                    <button class="btn btn-small" onclick="editorChangePage(1)">Sau ▶</button>
+                    <button class="btn btn-small btn-warning" onclick="printEditorStage()" style="margin-left: 15px;">🖨️ IN TRANG NÀY</button>
+                </div>
+				
                 <div class="editor-stage-scroll">
                     <div id="editor-empty" style="color:#666;margin-top:60px">Mở PDF để bắt đầu chỉnh sửa văn bản trực tiếp.</div>
                     <div id="editor-page-shell" class="editor-container-shell" style="display:none">
@@ -553,12 +560,7 @@
                     </div>
                 </div>
 
-<div class="editor-pagebar" style="position: sticky; bottom: 0; z-index: 100; background: white; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); width: 100%; box-sizing: border-box;">
-                    <button class="btn btn-small" onclick="editorChangePage(-1)">◀ Trước</button>
-                    <span id="editor-page-indicator" style="font-weight:bold">0 / 0</span>
-                    <button class="btn btn-small" onclick="editorChangePage(1)">Sau ▶</button>
-                    <button class="btn btn-small btn-warning" onclick="printEditorStage()" style="margin-left: 15px;">🖨️ IN TRANG NÀY</button>
-                </div>
+
 					
                 </div>
             </div>
