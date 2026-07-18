@@ -1062,7 +1062,10 @@
             const modifiedPdfBytes = await mergedPdfDoc.save();
             const blob = new Blob([modifiedPdfBytes], { type: "application/pdf" });
             const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
-            link.download = "tai_lieu_gop_tong_hop.pdf"; link.click();
+            // tên file cũ thêm _edit.pdf, nếu không có tên cũ thì dùng tên mặc định
+        const finalFileName = currentEditorFileName ? `${currentEditorFileName}_edit.pdf` : 'tai_lieu_edit.pdf';
+        link.download = finalFileName;
+			link.click();
         }
 
         // ==========================================
@@ -1322,11 +1325,19 @@
             });
         }
 
-        async function editorLoadFile(input) {
-            const file = input.files[0];
-            if (!file) return;
+			// tên file gốc (bỏ .pdf)
+			let currentEditorFileName = '';
+			
+			async function editorLoadFile(input) {
+			    const file = input.files[0];
+			    if (!file) return;
+			    
+			    // Lưu lại tên file gốc và cắt bỏ chữ ".pdf" ở đuôi
+			    currentEditorFileName = file.name.replace(/\.pdf$/i, ''); 
+			    
+			    document.getElementById('editor-file-status').innerText = 'Đang đọc...';
 
-            document.getElementById('editor-file-status').innerText = 'Đang đọc...';
+	
             const reader = new FileReader();
             reader.onload = async function() {
                 editorPdfDataBytes = this.result.slice(0);
