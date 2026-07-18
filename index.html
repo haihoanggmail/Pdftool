@@ -553,25 +553,13 @@
                     </div>
                 </div>
 
-			
-                <div class="editor-pagebar">
+<div class="editor-pagebar" style="position: sticky; bottom: 0; z-index: 100; background: white; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); width: 100%; box-sizing: border-box;">
                     <button class="btn btn-small" onclick="editorChangePage(-1)">◀ Trước</button>
                     <span id="editor-page-indicator" style="font-weight:bold">0 / 0</span>
                     <button class="btn btn-small" onclick="editorChangePage(1)">Sau ▶</button>
+                    <button class="btn btn-small btn-warning" onclick="printEditorStage()" style="margin-left: 15px;">🖨️ IN TRANG NÀY</button>
+                </div>
 					
-					<!-- THÊM NÚT in -->
-    <button class="btn btn-small btn-warning" onclick="printEditorStage()" style="margin-left: 15px;">🖨️ IN TRANG NÀY</button>
-
-/*					
-<div class="editor-pagebar" style="position: sticky; bottom: 0; z-index: 100; background: white; box-shadow: 0 -2px 10px rgba(0,0,0,0.05);">
-    <button class="btn btn-small" onclick="editorChangePage(-1)">◀ Trước</button>
-    <span id="editor-page-indicator" style="font-weight:bold">0 / 0</span>
-    <button class="btn btn-small" onclick="editorChangePage(1)">Sau ▶</button>
-    <button class="btn btn-small btn-warning" onclick="printEditorStage()" style="margin-left: 15px;">🖨️ IN TRANG NÀY</button>
-</div>
-*/
-
-	
                 </div>
             </div>
         </div>
