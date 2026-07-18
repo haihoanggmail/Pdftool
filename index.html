@@ -234,6 +234,59 @@
         .btn-tool:hover { background-color: #e2e8f0; }
         .btn-tool.active { background-color: var(--primary); color: white; border-color: var(--primary); }
         .brush-status { font-size: 11px; font-weight: bold; color: var(--primary); margin-top: 4px; text-align: center; }
+		
+		
+		
+		
+		
+		
+		/* Cấu hình đặc biệt dành riêng cho việc in ấn */
+@media print {
+    /* Khi trạng thái in từ nút bấm được kích hoạt */
+    body.printing-pdf-active {
+        background: #ffffff !important;
+    }
+    
+    /* Ẩn sạch sành sanh các thành phần thừa: thanh menu, sidebar, các nút bấm */
+    body.printing-pdf-active > *:not(main), 
+    body.printing-pdf-active nav, 
+    body.printing-pdf-active sidebar,
+    body.printing-pdf-active .sidebar,
+    body.printing-pdf-active .no-print,
+    body.printing-pdf-active button,
+    body.printing-pdf-active .editor-pagebar {
+        display: none !important;
+    }
+
+    /* Chỉ hiển thị duy nhất khu vực chứa trang PDF đang sửa */
+    body.printing-pdf-active #editor-page-shell {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: white !important;
+    }
+
+    /* Đảm bảo các layer chữ giữ nguyên vị trí tuyệt đối đè lên canvas */
+    body.printing-pdf-active .editor-text-layer {
+        display: block !important;
+    }
+
+    /* Thiết lập lề giấy in về 0 để không bị lệch khung */
+    @page {
+        size: auto;
+        margin: 0mm;
+    }
+}
+
+
+
+
     </style>
 </head>
 <body>
@@ -265,7 +318,7 @@
                     
 					<div id="wm-settings-block" style="display: none; transition: opacity 0.2s;">
                         <div style="margin-bottom: 8px;">
-                            <input type="text" id="wm-text" value="HACHIHI.VN" placeholder="Nhập nội dung không dấu..." oninput="updateWatermarkStyles()">
+                            <input type="text" id="wm-text" value="HACHIHI.VN" placeholder="Nhập nội dung..." oninput="updateWatermarkStyles()">
                         </div>
 
                         <div class="inline-group">
@@ -502,6 +555,11 @@
                     <button class="btn btn-small" onclick="editorChangePage(-1)">◀ Trước</button>
                     <span id="editor-page-indicator" style="font-weight:bold">0 / 0</span>
                     <button class="btn btn-small" onclick="editorChangePage(1)">Sau ▶</button>
+					
+					<!-- THÊM NÚT in -->
+    <button class="btn btn-small btn-warning" onclick="printEditorStage()" style="margin-left: 15px;">🖨️ IN TRANG NÀY</button>
+	
+	
                 </div>
             </div>
         </div>
@@ -552,6 +610,14 @@
         let wmRelativeTop = 40;
         let isDraggingWatermark = false;
         let startX, startY;
+
+        // --- Cache font Unicode (Roboto) dùng chung cho watermark & chỉnh sửa chữ ---
+        let cachedUnicodeFontBytes = {
+            regular: null,
+            bold: null,
+            italic: null,
+            bolditalic: null
+        };
 
         function switchTab(tabId, btn) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -658,11 +724,7 @@
 
         function updateWatermarkStyles() {
 			const input = document.getElementById('wm-text');
-			const text = removeVietnameseTones(input.value);
-
-			if (input.value !== text) {
-				input.value = text;
-			}
+			const text = input.value;
 
             const size = document.getElementById('wm-size').value + "px";
             const color = document.getElementById('wm-color').value;
@@ -953,11 +1015,12 @@
             if (!originalPdfBytes) return;
             const originalDoc = await PDFLib.PDFDocument.load(originalPdfBytes.slice(0));
             const mergedPdfDoc = await PDFLib.PDFDocument.create(); 
+            mergedPdfDoc.registerFontkit(fontkit);
             
             const copiedPages = await mergedPdfDoc.copyPages(originalDoc, pageOrder);
             
             const wmEnabled = document.getElementById('wm-enable').checked;
-			const wmText = removeVietnameseTones(document.getElementById('wm-text').value);
+			const wmText = document.getElementById('wm-text').value;
             const wmSize = parseInt(document.getElementById('wm-size').value);
             const wmColorHex = document.getElementById('wm-color').value;
             const wmRotationDeg = parseInt(document.getElementById('wm-rotation').value);
@@ -967,10 +1030,25 @@
             
             const rgbColor = hexToRgb(wmColorHex);
 
-            let chosenFont = await mergedPdfDoc.embedStandardFont(PDFLib.StandardFonts.Helvetica);
-            if (isBold && isItalic) chosenFont = await mergedPdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBoldOblique);
-            else if (isBold) chosenFont = await mergedPdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBold);
-            else if (isItalic) chosenFont = await mergedPdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaOblique);
+            // Dùng font Unicode (Roboto) để watermark giữ được dấu tiếng Việt
+            let fontStyle = "regular";
+            if (isBold && isItalic) fontStyle = "bolditalic";
+            else if (isBold) fontStyle = "bold";
+            else if (isItalic) fontStyle = "italic";
+
+            let chosenFont;
+            try {
+                const fontBytes = await getUnicodeFontBytes(fontStyle);
+                chosenFont = await mergedPdfDoc.embedFont(fontBytes, { subset: true });
+            } catch (e) {
+                console.warn("Không tải được font Unicode, dùng font Helvetica dự phòng (có thể mất dấu):", e);
+                //chosenFont = await mergedPdfDoc.embedStandardFont(PDFLib.StandardFonts.Helvetica);
+				alert(
+ "Không tải được font Unicode. Vui lòng kiểm tra thư mục fonts."
+);
+return;
+				
+            }
 
             copiedPages.forEach((page, idx) => {
                 const currentPageRotation = pageRotations[idx] || 0;
@@ -1010,13 +1088,14 @@
                 mergedPdfDoc.addPage(page);
             });
 
-const modifiedPdfBytes = await mergedPdfDoc.save();
+            const modifiedPdfBytes = await mergedPdfDoc.save();
             const blob = new Blob([modifiedPdfBytes], { type: "application/pdf" });
             const link = document.createElement('a'); 
             link.href = URL.createObjectURL(blob);
             
-            // SỬA TẠI ĐÂY: Đặt tên mặc định cố định cho file gộp
-            link.download = 'tai_lieu_gop_tong_hop.pdf';
+            // Đặt tên dựa theo tên file gốc chính của Tab 1
+            const finalFileName = mainFileName ? `${mainFileName}_mod.pdf` : 'tai_lieu_edited.pdf';
+            link.download = finalFileName;
             
             link.click();
         }
@@ -1077,10 +1156,11 @@ const modifiedPdfBytes = await mergedPdfDoc.save();
             const modifiedPdfBytes = await mergedPdfDoc.save();
             const blob = new Blob([modifiedPdfBytes], { type: "application/pdf" });
             const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
-// SỬA LẠI ĐOẠN NÀY THÀNH TÊN CỐ ĐỊNH:
-    link.download = 'tai_lieu_gop_tong_hop.pdf';
-    
-    link.click();
+            
+            // Đặt tên cố định cho file gộp tổng hợp tránh trùng với Tab chỉnh sửa chữ
+            link.download = 'tai_lieu_gop_tong_hop.pdf';
+            
+            link.click();
         }
 
         // ==========================================
@@ -1339,20 +1419,16 @@ const modifiedPdfBytes = await mergedPdfDoc.save();
                 drawSingleShape(ctx, shape);
             });
         }
-
-			// tên file gốc (bỏ .pdf)
-			let currentEditorFileName = '';
 			
-async function editorLoadFile(input) {
-    const file = input.files[0];
-    if (!file) return;
-    
-    // SỬA LẠI THÀNH:
-    editorFileName = file.name.replace(/\.pdf$/i, ''); 
-    
-    document.getElementById('editor-file-status').innerText = 'Đang đọc...';
+        async function editorLoadFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            // Lưu tên file gốc vào biến toàn cục của Tab 4
+            editorFileName = file.name.replace(/\.pdf$/i, ''); 
+            
+            document.getElementById('editor-file-status').innerText = 'Đang đọc...';
 
-	
             const reader = new FileReader();
             reader.onload = async function() {
                 editorPdfDataBytes = this.result.slice(0);
@@ -1656,20 +1732,81 @@ async function editorLoadFile(input) {
             });
         }
 
-	async function fetchFontWithFallback(style) {
-    // Không cần tải file qua mạng nữa, chuyển sang dùng thẳng font chuẩn của thư viện PDF-Lib
-    // Bộ font này hỗ trợ hiển thị tốt trên mọi thiết bị máy tính lẫn điện thoại
-    let targetFontName = PDFLib.StandardFonts.Helvetica;
-    
-    if (style === "bolditalic") targetFontName = PDFLib.StandardFonts.HelveticaBoldOblique;
-    else if (style === "bold") targetFontName = PDFLib.StandardFonts.HelveticaBold;
-    else if (style === "italic") targetFontName = PDFLib.StandardFonts.HelveticaOblique;
+async function fetchFontWithFallback(style) {
+    let fontName = "Roboto-Regular.ttf";
+    if (style === "bolditalic") fontName = "Roboto-BoldItalic.ttf";
+    else if (style === "bold") fontName = "Roboto-Bold.ttf";
+    else if (style === "italic") fontName = "Roboto-Italic.ttf";
 
-    return targetFontName;
+    // Thay đổi các URL dự phòng ổn định hơn, tránh bị lỗi CORS hoặc lỗi tải file
+    const urls = [
+        `https://raw.githubusercontent.com/bpampuch/pdfmake/master/examples/fonts/Roboto-${fontName.replace('Roboto-', '')}`,
+        `https://cdn.jsdelivr.net/npm/pdfmake@0.1.66/fonts/Roboto/${fontName}`,
+        `https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/${fontName}`
+    ];
+
+    for (const url of urls) {
+        try {
+            const response = await fetch(url);
+            if (response.ok) {
+                const bytes = await response.arrayBuffer();
+                if (bytes.byteLength > 1000) {
+                    return bytes;
+                }
+            }
+        } catch (err) {
+            console.warn(`Thử tải font từ ${url} thất bại...`);
+        }
+    }
+    throw new Error("Không thể tải font Roboto Unicode. Vui lòng kiểm tra kết nối mạng!");
 }
-		
+//gpt
+// ===============================
+// LOAD FONT UNICODE OFFLINE
+// ===============================
+async function getUnicodeFontBytes(style = "regular") {
 
-		
+    // cache
+    if (cachedUnicodeFontBytes[style]) {
+        return cachedUnicodeFontBytes[style];
+    }
+
+    const fontMap = {
+        regular: "fonts/Roboto-Regular.ttf",
+        bold: "fonts/Roboto-Bold.ttf",
+        italic: "fonts/Roboto-Italic.ttf",
+        bolditalic: "fonts/Roboto-BoldItalic.ttf"
+    };
+
+    const path = fontMap[style] || fontMap.regular;
+
+    try {
+        const response = await fetch(path);
+
+        if (!response.ok) {
+            throw new Error("Không tìm thấy font: " + path);
+        }
+
+        const buffer = await response.arrayBuffer();
+
+        cachedUnicodeFontBytes[style] = buffer;
+
+        console.log("Đã load font:", style);
+
+        return buffer;
+    }
+    catch (err) {
+
+        console.error(err);
+
+        alert(
+            "Không tải được font Unicode.\n" +
+            "Hãy kiểm tra thư mục:\nfonts/"
+        );
+
+        throw err;
+    }
+}
 
         async function editorExportPDF() {
             if (!editorPdfDataBytes) return;
@@ -1690,24 +1827,28 @@ async function editorLoadFile(input) {
 
                 const pages = pdfDoc.getPages();
                 
-                /* Nạp sẵn các kiểu Font Unicode khác nhau
-                const regularFontBytes = await fetchFontWithFallback("regular");
-                const regularFont = await pdfDoc.embedFont(regularFontBytes);
+				// Dùng font Unicode (Roboto) để giữ được dấu tiếng Việt khi xuất file
+				let regularFont, boldFont, italicFont, boldItalicFont;
+				try {
+					const regularBytes    = await getUnicodeFontBytes("regular");
+					const boldBytes       = await getUnicodeFontBytes("bold");
+					const italicBytes     = await getUnicodeFontBytes("italic");
+					const boldItalicBytes = await getUnicodeFontBytes("bolditalic");
 
-                const boldFontBytes = await fetchFontWithFallback("bold");
-                const boldFont = await pdfDoc.embedFont(boldFontBytes);
-
-                const italicFontBytes = await fetchFontWithFallback("italic");
-                const italicFont = await pdfDoc.embedFont(italicFontBytes);
-
-                const boldItalicFontBytes = await fetchFontWithFallback("bolditalic");
-                const boldItalicFont = await pdfDoc.embedFont(boldItalicFontBytes);
-				*/
-				// font hệ thống tiêu chuẩn:
-				const regularFont = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.Helvetica);
-				const boldFont = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBold);
-				const italicFont = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaOblique);
-				const boldItalicFont = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBoldOblique);
+					regularFont    = await pdfDoc.embedFont(regularBytes,    { subset: true });
+					boldFont       = await pdfDoc.embedFont(boldBytes,       { subset: true });
+					italicFont     = await pdfDoc.embedFont(italicBytes,     { subset: true });
+					boldItalicFont = await pdfDoc.embedFont(boldItalicBytes, { subset: true });
+				} catch (fontError) {
+					console.warn("Không tải được font Unicode Roboto, chuyển sang font Helvetica dự phòng (sẽ mất dấu tiếng Việt):", fontError);
+					alert("Cảnh báo: Không tải được font Unicode qua mạng, văn bản có dấu tiếng Việt chỉnh sửa có thể bị mất dấu khi xuất file. Vui lòng kiểm tra kết nối mạng và thử lại.");
+				//regularFont    = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.Helvetica);
+				//	#boldFont       = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBold);
+				//	#italicFont     = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaOblique);
+				//	#boldItalicFont = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBoldOblique);
+				
+				
+				}
 
                 // 1. Vẽ đè và cập nhật văn bản tiếng Việt
                 modifiedTexts.forEach(change => {
@@ -1729,18 +1870,14 @@ async function editorLoadFile(input) {
                     else if (change.isBold) targetFont = boldFont;
                     else if (change.isItalic) targetFont = italicFont;
 
-// sửa font:
-const safeText = removeVietnameseTones(change.text);
-
-pageObj.drawText(safeText, {
-    x: change.x,
-    y: change.y,
-    size: change.fontSize,
-    font: targetFont,
-    color: PDFLib.rgb(0, 0, 0)
-});
-
-					
+                    // Giữ nguyên văn bản có dấu tiếng Việt (không xóa dấu nữa)
+                    pageObj.drawText(change.text, {
+                        x: change.x,
+                        y: change.y,
+                        size: change.fontSize,
+                        font: targetFont,
+                        color: PDFLib.rgb(0, 0, 0)
+                    });
                 });
 
                 // 2. Vẽ tất cả các hình học vector lên file PDF
@@ -1805,7 +1942,8 @@ pageObj.drawText(safeText, {
                 const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
-// Sử dụng biến editorFileName của Tab 4
+
+                // Sử dụng biến editorFileName của Tab 4
                 const finalFileName = editorFileName ? `${editorFileName}_edit.pdf` : 'tai_lieu_chinh_sua.pdf';
                 link.download = finalFileName;
                 
@@ -1835,6 +1973,117 @@ pageObj.drawText(safeText, {
                 })
             });
         }
+function printEditorStage() {
+    const pdfCanvas = document.getElementById('editor-pdf-canvas');
+    const drawCanvas = document.getElementById('editor-draw-canvas');
+    const textLayer = document.getElementById('editor-text-layer');
+
+    if (!pdfCanvas) {
+        alert("Chưa có tài liệu để in!");
+        return;
+    }
+
+    // 1. Tạo một canvas phụ để gộp Nền PDF + Nét vẽ (nếu có)
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = pdfCanvas.width;
+    tempCanvas.height = pdfCanvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    // Vẽ nền PDF gốc
+    tempCtx.drawImage(pdfCanvas, 0, 0);
+    // Vẽ đè các nét vẽ hoặc hình khối lên trên
+    if (drawCanvas) {
+        tempCtx.drawImage(drawCanvas, 0, 0);
+    }
+
+    // Chuyển toàn bộ thành một tấm ảnh duy nhất
+    const combinedImgData = tempCanvas.toDataURL('image/png');
+
+    // 2. Tạo một khung in ẩn trực tiếp trên trang hiện tại để giữ 100% CSS gốc, không lo mất font
+    let printFrame = document.getElementById('pdf-print-frame');
+    if (!printFrame) {
+        printFrame = document.createElement('iframe');
+        printFrame.id = 'pdf-print-frame';
+        // Ẩn khung này đi để không làm xấu giao diện web
+        printFrame.style.position = 'fixed';
+        printFrame.style.right = '0';
+        printFrame.style.bottom = '0';
+        printFrame.style.width = '0';
+        printFrame.style.height = '0';
+        printFrame.style.border = 'none';
+        document.body.appendChild(printFrame);
+    }
+
+    // 3. Lấy toàn bộ CSS của trang web hiện tại nạp vào iframe để lớp chữ ko bị vỡ định dạng
+    let styles = '';
+    for (let styleSheet of document.styleSheets) {
+        try {
+            for (let rule of styleSheet.cssRules) {
+                styles += rule.cssText;
+            }
+        } catch (e) { }
+    }
+
+    // --- ĐOẠN TỰ ĐỘNG TẠO TÊN FILE THEO QUY LUẬT ---
+    const now = new Date();
+    const dateStr = now.getDate() + '-' + (now.getMonth() + 1) + '-' + now.getFullYear();
+    const timeStr = now.getHours() + 'h' + now.getMinutes();
+    
+    // Bạn có thể đổi chữ 'Don_hang_da_sua' thành bất cứ tên gì bạn muốn ở đây
+    const customTitle = `Don_hang_da_sua_${dateStr}_${timeStr}`; 
+
+    // 4. Bơm nội dung ảnh + chữ có dấu vào iframe (Đã thêm thẻ <title> để đổi tên file)
+    const frameDoc = printFrame.contentWindow.document;
+    frameDoc.open();
+    frameDoc.write(`
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <!-- Đổi tên file mặc định khi in ở đây -->
+            <title>${customTitle}</title>
+            <style>
+                ${styles}
+                body { margin: 0; padding: 0; background: #fff; }
+                .print-wrapper {
+                    position: relative;
+                    width: ${pdfCanvas.width}px;
+                    height: ${pdfCanvas.height}px;
+                }
+                .print-img {
+                    position: absolute;
+                    top: 0; left: 0; width: 100%; height: 100%;
+                    z-index: 1;
+                }
+                .editor-text-layer {
+                    position: absolute;
+                    top: 0; left: 0; width: 100%; height: 100%;
+                    z-index: 2;
+                    transform: none !important; /* Triệt tiêu các transform gây lệch vị trí chữ */
+                }
+                @media print {
+                    @page { size: auto; margin: 0mm; }
+                    body { margin: 0; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="print-wrapper">
+                <img src="${combinedImgData}" class="print-img" />
+                <div class="editor-text-layer">
+                    ${textLayer.innerHTML}
+                </div>
+            </div>
+        </body>
+        </html>
+    `);
+    frameDoc.close();
+
+    // 5. Đợi hình ảnh trong iframe tải xong hoàn toàn rồi ra lệnh in
+    setTimeout(() => {
+        printFrame.contentWindow.focus();
+        printFrame.contentWindow.print();
+    }, 500);
+}
     </script>
 </body>
 </html>
