@@ -1857,7 +1857,7 @@ async function editorExportPDF() {
                     boldItalicFont = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBoldOblique);
                 }
 
-                // 1. Vẽ đè và cập nhật văn bản tiếng Việt
+               // 1. Bước 1: Vẽ tất cả các hình chữ nhật trắng để XÓA SẠCH chữ cũ trước
                 modifiedTexts.forEach(change => {
                     const pageIndex = change.page - 1;
                     const pageObj = pages[pageIndex];
@@ -1870,6 +1870,12 @@ async function editorExportPDF() {
                         height: change.fontSize + descenderOffset + 2,
                         color: PDFLib.rgb(1, 1, 1),
                     });
+                });
+
+                // Bước 2: Vẽ CHỮ MỚI đè lên trên lớp nền trắng để không bao giờ bị mất chữ
+                modifiedTexts.forEach(change => {
+                    const pageIndex = change.page - 1;
+                    const pageObj = pages[pageIndex];
 
                     // Quyết định Font phù hợp dựa trên cờ isBold/isItalic
                     let targetFont = regularFont;
@@ -1886,6 +1892,8 @@ async function editorExportPDF() {
                         color: PDFLib.rgb(0, 0, 0)
                     });
                 });
+
+				
 
                 // 2. Vẽ tất cả các hình học vector lên file PDF
                 editorShapes.forEach(shape => {
