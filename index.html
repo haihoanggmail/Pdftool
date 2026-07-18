@@ -1835,7 +1835,7 @@ async function editorExportPDF() {
 
                 const pages = pdfDoc.getPages();
                 
-                // Tải trực tiếp font từ thư mục /fonts/ để hiển thị đầy đủ chữ ĐƠN ĐẶT HÀNG
+                // Tải trực tiếp font Unicode Roboto để hiển thị được chữ Đ và Ơ
                 let regularFont, boldFont, italicFont, boldItalicFont;
                 try {
                     const [regularBytes, boldBytes, italicBytes, boldItalicBytes] = await Promise.all([
@@ -1879,7 +1879,7 @@ async function editorExportPDF() {
                     else if (change.isBold) targetFont = boldFont;
                     else if (change.isItalic) targetFont = italicFont;
 
-                    // Giữ nguyên văn bản có dấu tiếng Việt
+                    // Vẽ chữ chuẩn Unicode có dấu tiếng Việt
                     pageObj.drawText(change.text, {
                         x: change.x,
                         y: change.y,
@@ -1964,7 +1964,6 @@ async function editorExportPDF() {
                 btn.disabled = false;
             }
         }
-
 
 
 
