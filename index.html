@@ -2042,12 +2042,14 @@ function printEditorStage() {
     }
 
     // --- ĐOẠN TỰ ĐỘNG TẠO TÊN FILE THEO QUY LUẬT ---
-    const now = new Date();
+    <!--const now = new Date();
     const dateStr = now.getDate() + '-' + (now.getMonth() + 1) + '-' + now.getFullYear();
     const timeStr = now.getHours() + 'h' + now.getMinutes();
     
     // Bạn có thể đổi chữ 'Don_hang_da_sua' thành bất cứ tên gì bạn muốn ở đây
     const customTitle = `Don_hang_da_sua_${dateStr}_${timeStr}`; 
+	-->
+	const customTitle = editorFileName ? `${editorFileName}_edit` : 'tai_lieu_chinh_sua_edit';
 
     // 4. Bơm nội dung ảnh + chữ có dấu vào iframe (Đã thêm thẻ <title> để đổi tên file)
     const frameDoc = printFrame.contentWindow.document;
