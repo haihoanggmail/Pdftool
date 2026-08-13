@@ -1990,171 +1990,89 @@ async function editorExportPDF() {
                 })
             });
         }
-function printEditorStage1() {
+
+
+function printEditorStage() {
     const pdfCanvas = document.getElementById('editor-pdf-canvas');
     const drawCanvas = document.getElementById('editor-draw-canvas');
-    const textLayer = document.getElementById('editor-text-layer');
 
     if (!pdfCanvas) {
         alert("Chưa có tài liệu để in!");
         return;
     }
 
-    // 1. Tạo một canvas phụ để gộp Nền PDF + Nét vẽ (nếu có)
+    // 1. Tạo canvas phụ để gộp Nền PDF, Nét vẽ và Chữ đã chỉnh sửa thành 1 ảnh duy nhất
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = pdfCanvas.width;
     tempCanvas.height = pdfCanvas.height;
     const tempCtx = tempCanvas.getContext('2d');
 
-    // Vẽ nền PDF gốc
+    // Bước A: Vẽ nền PDF gốc
     tempCtx.drawImage(pdfCanvas, 0, 0);
-    // Vẽ đè các nét vẽ hoặc hình khối lên trên
+
+    // Bước B: Vẽ các nét vẽ (nếu có)
     if (drawCanvas) {
         tempCtx.drawImage(drawCanvas, 0, 0);
     }
 
-    // Chuyển toàn bộ thành một tấm ảnh duy nhất
-    const combinedImgData = tempCanvas.toDataURL('image/png');
 
-    // 2. Tạo một khung in ẩn trực tiếp trên trang hiện tại để giữ 100% CSS gốc, không lo mất font
-    let printFrame = document.getElementById('pdf-print-frame');
-    if (!printFrame) {
-        printFrame = document.createElement('iframe');
-        printFrame.id = 'pdf-print-frame';
-        // Ẩn khung này đi để không làm xấu giao diện web
-        printFrame.style.position = 'fixed';
-        printFrame.style.right = '0';
-        printFrame.style.bottom = '0';
-        printFrame.style.width = '0';
-        printFrame.style.height = '0';
-        printFrame.style.border = 'none';
-        document.body.appendChild(printFrame);
-    }
+// Bước C: Xóa chữ gốc và vẽ chữ mới
+if (modifiedTexts && modifiedTexts.length) {
 
-    // 3. Lấy toàn bộ CSS của trang web hiện tại nạp vào iframe để lớp chữ ko bị vỡ định dạng
-    let styles = '';
-    for (let styleSheet of document.styleSheets) {
-        try {
-            for (let rule of styleSheet.cssRules) {
-                styles += rule.cssText;
-            }
-        } catch (e) { }
-    }
+    modifiedTexts.forEach(change => {
+        if (change.page !== editorPage) return;
 
-    // --- ĐOẠN TỰ ĐỘNG TẠO TÊN FILE THEO QUY LUẬT ---
-    /*
-		const now = new Date();
-    const dateStr = now.getDate() + '-' + (now.getMonth() + 1) + '-' + now.getFullYear();
-    const timeStr = now.getHours() + 'h' + now.getMinutes();
-    
-    // Bạn có thể đổi chữ 'Don_hang_da_sua' thành bất cứ tên gì bạn muốn ở đây
-    const customTitle = `Don_hang_da_sua_${dateStr}_${timeStr}`; 
-	*/
-	const customTitle = editorFileName ? `${editorFileName}_edit` : 'tai_lieu_chinh_sua_edit';
+        // PDF -> Canvas (Viewport)
+        const [oldX, oldY] = editorViewport.convertToViewportPoint(
+            change.origX,
+            change.origY
+        );
 
-    // 4. Bơm nội dung ảnh + chữ có dấu vào iframe (Đã thêm thẻ <title> để đổi tên file)
-    const frameDoc = printFrame.contentWindow.document;
-    frameDoc.open();
-    frameDoc.write(`
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <!-- Đổi tên file mặc định khi in ở đây -->
-            <title>${customTitle}</title>
-            <style>
-                ${styles}
-                body { margin: 0; padding: 0; background: #fff; }
-                .print-wrapper {
-                    position: relative;
-                    width: ${pdfCanvas.width}px;
-                    height: ${pdfCanvas.height}px;
-                }
-                .print-img {
-                    position: absolute;
-                    top: 0; left: 0; width: 100%; height: 100%;
-                    z-index: 1;
-                }
-                .editor-text-layer {
-                    position: absolute;
-                    top: 0; left: 0; width: 100%; height: 100%;
-                    z-index: 2;
-                    transform: none !important; /* Triệt tiêu các transform gây lệch vị trí chữ */
-                }
-                @media print {
-                    @page { size: auto; margin: 0mm; }
-                    body { margin: 0; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="print-wrapper">
-                <img src="${combinedImgData}" class="print-img" />
-                <div class="editor-text-layer">
-                    ${textLayer.innerHTML}
-                </div>
-            </div>
-        </body>
-        </html>
-    `);
-    frameDoc.close();
+        const [newX, newY] = editorViewport.convertToViewportPoint(
+            change.x ?? change.origX,
+            change.y ?? change.origY
+        );
 
-    // 5. Đợi hình ảnh trong iframe tải xong hoàn toàn rồi ra lệnh in
-    setTimeout(() => {
-        printFrame.contentWindow.focus();
-        printFrame.contentWindow.print();
-    }, 500);
+        const w = (change.origWidth || 0) * editorScale;
+        const h = (change.origHeight || change.fontSize) * editorScale;
+
+        tempCtx.save();
+
+        // Che chữ cũ
+        tempCtx.fillStyle = "#FFFFFF";
+        tempCtx.fillRect(
+            oldX - 3,
+            oldY - h - 2,
+            w + 6,
+            h + 6
+        );
+
+        // Vẽ chữ mới
+        tempCtx.font = `${change.isItalic ? "italic " : ""}${change.isBold ? "bold " : ""}${h}px Arial`;
+        tempCtx.fillStyle = "#000";
+        tempCtx.textBaseline = "alphabetic";
+        tempCtx.fillText(change.text, newX, newY);
+
+        tempCtx.restore();
+    });
 }
 
-		function printEditorStage() {
-    const pdfCanvas = document.getElementById('editor-pdf-canvas');
-    const drawCanvas = document.getElementById('editor-draw-canvas');
-    const textLayer = document.getElementById('editor-text-layer');
+  // Chuyển toàn bộ canvas thành một ảnh hoàn chỉnh sạch sẽ
+    const finalImgData = tempCanvas.toDataURL('image/png');
 
-    if (!pdfCanvas) {
-        alert("Chưa có tài liệu để in!");
-        return;
-    }
-
-    // 1. Tạo một canvas phụ để gộp Nền PDF + Nét vẽ (nếu có)
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = pdfCanvas.width;
-    tempCanvas.height = pdfCanvas.height;
-    const tempCtx = tempCanvas.getContext('2d');
-
-    // Vẽ nền PDF gốc
-    tempCtx.drawImage(pdfCanvas, 0, 0);
-    // Vẽ đè các nét vẽ hoặc hình khối lên trên
-    if (drawCanvas) {
-        tempCtx.drawImage(drawCanvas, 0, 0);
-    }
-
-    // Chuyển toàn bộ thành một tấm ảnh duy nhất
-    const combinedImgData = tempCanvas.toDataURL('image/png');
-
-    // 2. Lấy toàn bộ CSS của trang web hiện tại để nạp vào cửa sổ in
-    let styles = '';
-    for (let styleSheet of document.styleSheets) {
-        try {
-            for (let rule of styleSheet.cssRules) {
-                styles += rule.cssText;
-            }
-        } catch (e) { }
-    }
-
-    // --- ĐOẠN TỰ ĐỘNG TẠO TÊN FILE THEO QUY LUẬT ---
+    // 2. Thiết lập tiêu đề file in
     const now = new Date();
     const dateStr = now.getDate() + '-' + (now.getMonth() + 1) + '-' + now.getFullYear();
-    const timeStr = now.getHours() + 'h' + now.getMinutes();
-    const customTitle = `Don_hang_da_sua_${dateStr}_${timeStr}`; 
+    const customTitle = editorFileName ? `${editorFileName}_edit` : `Don_hang_da_sua_${dateStr}`; 
 
-    // 3. GIẢI PHÁP CHO GOOGLE SITES: Mở hẳn một tab/cửa sổ mới độc lập, không dùng iframe phụ
+    // 3. Mở cửa sổ in
     const printWindow = window.open('', '_blank', 'width=900,height=700');
     if (!printWindow) {
-        alert("Trình duyệt đã chặn cửa sổ Bật lên (Popup). Vui lòng cho phép hiện Popup trên Google Sites để in!");
+        alert("Trình duyệt đã chặn cửa sổ Popup. Vui lòng cho phép hiện Popup để in!");
         return;
     }
 
-    // 4. Bơm nội dung ảnh + chữ có dấu vào cửa sổ mới này
+    // 4. In trực tiếp ảnh đã gộp (Không dùng textLayer HTML nữa để tránh bị đè chữ)
     printWindow.document.open();
     printWindow.document.write(`
         <html>
@@ -2162,46 +2080,29 @@ function printEditorStage1() {
             <meta charset="utf-8">
             <title>${customTitle}</title>
             <style>
-                ${styles}
-                body { margin: 0; padding: 0; background: #fff; }
-                .print-wrapper {
-                    position: relative;
-                    width: ${pdfCanvas.width}px;
-                    height: ${pdfCanvas.height}px;
+                body { margin: 0; padding: 0; background: #fff; text-align: center; }
+                img {
+                    max-width: 100%;
+                    height: auto;
+                    display: block;
                     margin: 0 auto;
-                }
-                .print-img {
-                    position: absolute;
-                    top: 0; left: 0; width: 100%; height: 100%;
-                    z-index: 1;
-                }
-                .editor-text-layer {
-                    position: absolute;
-                    top: 0; left: 0; width: 100%; height: 100%;
-                    z-index: 2;
-                    transform: none !important;
                 }
                 @media print {
                     @page { size: auto; margin: 0mm; }
                     body { margin: 0; }
+                    img { width: 100%; height: 100%; }
                 }
             </style>
         </head>
         <body>
-            <div class="print-wrapper">
-                <img src="${combinedImgData}" class="print-img" />
-                <div class="editor-text-layer">
-                    ${textLayer.innerHTML}
-                </div>
-            </div>
+            <img src="${finalImgData}" />
             <script>
-                // Đợi hình ảnh tải xong trên tab mới rồi ra lệnh in, in xong tự đóng tab
                 window.onload = function() {
                     setTimeout(() => {
                         window.focus();
                         window.print();
                         window.close();
-                    }, 300);
+                    }, 400);
                 };
             <\/script>
         </body>
@@ -2209,6 +2110,8 @@ function printEditorStage1() {
     `);
     printWindow.document.close();
 }
+
+
     </script>
 </body>
 </html>
