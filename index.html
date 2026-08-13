@@ -549,6 +549,7 @@
                     <span id="editor-page-indicator" style="font-weight:bold">0 / 0</span>
                     <button class="btn btn-small" onclick="editorChangePage(1)">Sau ▶</button>
                     <button class="btn btn-small btn-warning" onclick="printEditorStage()" style="margin-left: 15px;">🖨️ IN TRANG NÀY</button>
+					<button class="btn btn-small btn-success" onclick="printAllEditorPages()">📚 IN TOÀN BỘ</button>
                 </div>
 				
                 <div class="editor-stage-scroll">
@@ -1493,12 +1494,16 @@ return;
             textContent.items.forEach((item, index) => {
                 const span = document.createElement('span');
                 const tx = pdfjsLib.Util.transform(editorViewport.transform, item.transform);
+				const isBold = /bold|black|heavy/i.test(item.fontName || "");
+				const isItalic = /italic|oblique/i.test(item.fontName || "");
 
                 span.textContent = item.str;
-                span.style.fontFamily = 'Helvetica, Arial, sans-serif';
+                span.style.fontFamily = item.fontName || 'Arial';
                 span.style.fontSize = `${item.height * editorScale}px`;
                 span.style.left = `${tx[4]}px`;
                 span.style.top = `${tx[5] - (item.height * editorScale)}px`;
+				if (isBold) span.classList.add("is-bold");
+				if (isItalic) span.classList.add("is-italic");
                 
                 const key = `${editorPage}_${index}`;
                 const savedChange = modifiedTexts.find(m => m.key === key);
@@ -1673,21 +1678,30 @@ return;
             textLayerDiv.appendChild(input);
             input.focus();
 
-            // Lắng nghe phím tắt Ctrl+B và Ctrl+I trong ô nhập chữ
-            input.addEventListener('keydown', (e) => {
-                if (e.ctrlKey || e.metaKey) {
-                    if (e.key.toLowerCase() === 'b') {
-                        e.preventDefault();
-                        input.classList.toggle('is-bold');
-                        span.classList.toggle('is-bold');
-                    }
-                    if (e.key.toLowerCase() === 'i') {
-                        e.preventDefault();
-                        input.classList.toggle('is-italic');
-                        span.classList.toggle('is-italic');
-                    }
-                }
-            });
+
+// Lắng nghe phím tắt Ctrl+B và Ctrl+I
+input.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey)) return;
+
+    const isB = e.key.toLowerCase() === 'b';
+    const isI = e.key.toLowerCase() === 'i';
+    if (!isB && !isI) return;
+
+    e.preventDefault();
+
+    if (isB) {
+        input.classList.toggle('is-bold');
+        span.classList.toggle('is-bold');
+        change.isBold = span.classList.contains('is-bold');   // <-- thêm
+    }
+
+    if (isI) {
+        input.classList.toggle('is-italic');
+        span.classList.toggle('is-italic');
+        change.isItalic = span.classList.contains('is-italic'); // <-- thêm
+    }
+});
+
 
             const saveChange = () => {
                 const newText = input.value;
@@ -1895,9 +1909,7 @@ async function editorExportPDF() {
                     });
                 });
 
-				
 
-                // 2. Vẽ tất cả các hình học vector lên file PDF
                 editorShapes.forEach(shape => {
                     const pageObj = pages[shape.page - 1];
                     const rgb = hexToRgb(shape.color);
@@ -1996,41 +2008,27 @@ function printEditorStage() {
     const pdfCanvas = document.getElementById('editor-pdf-canvas');
     const drawCanvas = document.getElementById('editor-draw-canvas');
 
-    if (!pdfCanvas) {
-        alert("Chưa có tài liệu để in!");
-        return;
-    }
+    if (!pdfCanvas) {        alert("Chưa có tài liệu để in!");        return;    }
 
-    // 1. Tạo canvas phụ để gộp Nền PDF, Nét vẽ và Chữ đã chỉnh sửa thành 1 ảnh duy nhất
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = pdfCanvas.width;
     tempCanvas.height = pdfCanvas.height;
     const tempCtx = tempCanvas.getContext('2d');
 
-    // Bước A: Vẽ nền PDF gốc
     tempCtx.drawImage(pdfCanvas, 0, 0);
 
-    // Bước B: Vẽ các nét vẽ (nếu có)
-    if (drawCanvas) {
-        tempCtx.drawImage(drawCanvas, 0, 0);
-    }
+    if (drawCanvas) {        tempCtx.drawImage(drawCanvas, 0, 0);    }
 
-
-// Bước C: Xóa chữ gốc và vẽ chữ mới
 if (modifiedTexts && modifiedTexts.length) {
 
     modifiedTexts.forEach(change => {
         if (change.page !== editorPage) return;
 
-        // PDF -> Canvas (Viewport)
         const [oldX, oldY] = editorViewport.convertToViewportPoint(
-            change.origX,
-            change.origY
-        );
+            change.origX,            change.origY        );
 
         const [newX, newY] = editorViewport.convertToViewportPoint(
-            change.x ?? change.origX,
-            change.y ?? change.origY
+            change.x ?? change.origX,            change.y ?? change.origY
         );
 
         const w = (change.origWidth || 0) * editorScale;
@@ -2038,41 +2036,36 @@ if (modifiedTexts && modifiedTexts.length) {
 
         tempCtx.save();
 
-        // Che chữ cũ
         tempCtx.fillStyle = "#FFFFFF";
-        tempCtx.fillRect(
-            oldX - 3,
-            oldY - h - 2,
-            w + 6,
-            h + 6
-        );
+        tempCtx.fillRect( oldX - 3,  oldY - h - 2,    w + 6, h + 6 );
 
-        // Vẽ chữ mới
-        tempCtx.font = `${change.isItalic ? "italic " : ""}${change.isBold ? "bold " : ""}${h}px Arial`;
+const weight = change.isBold ? "bold" : "normal";
+const style  = change.isItalic ? "italic" : "normal";
+
+tempCtx.font = `${style} ${weight} ${change.fontSize * editorScale}px Arial`;
+
         tempCtx.fillStyle = "#000";
         tempCtx.textBaseline = "alphabetic";
         tempCtx.fillText(change.text, newX, newY);
-
         tempCtx.restore();
     });
 }
 
-  // Chuyển toàn bộ canvas thành một ảnh hoàn chỉnh sạch sẽ
     const finalImgData = tempCanvas.toDataURL('image/png');
 
-    // 2. Thiết lập tiêu đề file in
+
     const now = new Date();
     const dateStr = now.getDate() + '-' + (now.getMonth() + 1) + '-' + now.getFullYear();
     const customTitle = editorFileName ? `${editorFileName}_edit` : `Don_hang_da_sua_${dateStr}`; 
 
-    // 3. Mở cửa sổ in
+
     const printWindow = window.open('', '_blank', 'width=900,height=700');
     if (!printWindow) {
         alert("Trình duyệt đã chặn cửa sổ Popup. Vui lòng cho phép hiện Popup để in!");
         return;
     }
 
-    // 4. In trực tiếp ảnh đã gộp (Không dùng textLayer HTML nữa để tránh bị đè chữ)
+
     printWindow.document.open();
     printWindow.document.write(`
         <html>
@@ -2108,6 +2101,95 @@ if (modifiedTexts && modifiedTexts.length) {
         </body>
         </html>
     `);
+    printWindow.document.close();
+}
+
+
+async function printAllEditorPages() {
+
+    if (!editorPdfJsDoc) {
+        alert("Chưa mở PDF!");
+        return;
+    }
+
+    const printWindow = window.open("", "_blank");
+    let html = `
+    <html>
+    <head>
+    <meta charset="utf-8">
+    <title>${editorFileName || "PDF_Print"}</title>
+    <style>
+        body{margin:0;background:#fff;}
+        img{
+            width:100%;
+            display:block;
+            page-break-after:always;
+        }
+        img:last-child{page-break-after:auto;}
+        @page{margin:0;}
+    </style>
+    </head>
+    <body>`;
+
+    for (let p = 1; p <= editorPdfJsDoc.numPages; p++) {
+
+        const page = await editorPdfJsDoc.getPage(p);
+        const viewport = page.getViewport({ scale: editorScale });
+
+        const pdfCanvas = document.createElement("canvas");
+        pdfCanvas.width = viewport.width;
+        pdfCanvas.height = viewport.height;
+
+        await page.render({
+            canvasContext: pdfCanvas.getContext("2d"),
+            viewport
+        }).promise;
+
+        const temp = document.createElement("canvas");
+        temp.width = viewport.width;
+        temp.height = viewport.height;
+        const ctx = temp.getContext("2d");
+
+        ctx.drawImage(pdfCanvas,0,0);
+
+
+        modifiedTexts.forEach(t=>{
+
+            if(t.page!==p) return;
+
+            const oldPos = viewport.convertToViewportPoint(t.origX,t.origY);
+            const newPos = viewport.convertToViewportPoint(
+                t.x ?? t.origX,
+                t.y ?? t.origY
+            );
+
+            const h = t.fontSize * editorScale;
+            const w = t.origWidth * editorScale;
+
+            ctx.fillStyle="#fff";
+            ctx.fillRect(oldPos[0]-2,oldPos[1]-h-2,w+4,h+4);
+
+            ctx.font=`${t.isItalic?"italic ":""}${t.isBold?"bold ":""}${h}px Arial`;
+            ctx.fillStyle=t.color || "#000";
+            ctx.textBaseline="alphabetic";
+            ctx.fillText(t.text,newPos[0],newPos[1]);
+        });
+
+        html += `<img src="${temp.toDataURL("image/png")}">`;
+    }
+
+    html += `
+    <script>
+    window.onload=()=>{
+        setTimeout(()=>{
+            window.print();
+            window.close();
+        },500);
+    };
+    <\/script>
+    </body></html>`;
+
+    printWindow.document.write(html);
     printWindow.document.close();
 }
 
