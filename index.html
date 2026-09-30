@@ -6,7 +6,7 @@
     <title>PDF tool by hachihi.vn - 0933842126, support by: Hải Hoàng 09-1800-1944</title>
     <!-- lid-->
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-    <script src="https://unpkg.com/@pdf-lib/fontkit/dist/fontkit.umd.min.js"></script>
+    <script src="https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     
     <style>
@@ -157,7 +157,7 @@
             line-height: 0;
         }
         #editor-pdf-canvas { display: block; }
-        #editor-draw-canvas { position: absolute; top:0; left:0; pointer-events: auto; z-index: 5; }
+        #editor-draw-canvas { position: absolute; top:0; left:0; pointer-events: auto; z-index: 5; touch-action: none; }
         
         /* chữ */
         .editor-text-layer {
@@ -514,6 +514,7 @@
                         <button class="btn btn-small btn-tool" id="tool-line" onclick="setEditorTool('line')">📏 Đường Thẳng</button>
                         <button class="btn btn-small btn-tool" id="tool-rect" onclick="setEditorTool('rect')">⬜ Hình Vuông</button>
                         <button class="btn btn-small btn-tool" id="tool-ellipse" onclick="setEditorTool('ellipse')">⭕ Hình Elip</button>
+                        <button class="btn btn-small btn-tool" id="tool-arrow" onclick="setEditorTool('arrow')">➡️ Mũi Tên</button>
                     </div>
                     <div style="margin-bottom:8px;">
                         <label style="font-size:11px; font-weight:600; color:#555;">Màu nét vẽ:</label>
@@ -531,16 +532,15 @@
                         - Nhấn <b>Ctrl + I</b> để in nghiêng chữ.<br>
                         • <b>Hoàn Tác (Undo):</b><br>
                         - Nhấn <b>Ctrl + Z</b> để xóa hình vẽ lỗi gần nhất, hoặc hoàn tác chữ vừa di chuyển/chỉnh sửa.<br>
+                        • <b>Giữ Shift</b> khi kéo: hình vuông/tròn đều, đường thẳng/mũi tên theo góc 45°.<br>
                         • <b>Cọ Vẽ:</b> Cuộn chuột trên trang để tăng/giảm nét vẽ nhanh chóng.
                     </p>
                 </div>
 
-                <!--
-				<div class="card" style="margin-top:auto">
+                <div class="card" style="margin-top:auto">
                     <p class="card-title">2. Xuất PDF</p>
-                    <button class="btn btn-success" id="editor-download-btn" onclick="editorExportPDF()" disabled>💾 XUẤT FILE ĐÃ SỬA CHỮ</button>
+                    <button class="btn btn-success" id="editor-download-btn" onclick="editorExportPDF()" disabled>💾 XUẤT FILE ĐÃ SỬA</button>
                 </div>
-				-->
             </div>
 
             <div class="editor-main">
@@ -625,7 +625,7 @@
                 <li>
                     <b>Tích hợp bộ công cụ vẽ:</b>
                     Hỗ trợ vẽ tự do, đường thẳng, hình vuông, hình tròn,
-                    elip chuẩn vector với nét vẽ tùy biến.
+                    mũi tên, elip chuẩn vector với nét vẽ tùy biến.
                 </li>
 
                 <li>
@@ -637,23 +637,15 @@
 
         </div>
 
-        <!-- Google Form -->
-        <div class="about-form"
-             style="width:100%; margin-top:10px;">
-
-            <iframe
-                src="https://forms.gle/NdVxwTiSXKvBRehW7"
-                width="100%"
-                height="700"
-                frameborder="0"
-                marginheight="0"
-                marginwidth="0"
-                style="border:1px solid #d2d0ce;
-                       border-radius:8px;
-                       background:#fff;">
-                Đang tải form...
-            </iframe>
-
+        <!-- Form phản hồi -->
+        <div class="about-form" style="width:100%; margin-top:10px;">
+            <div id="feedback-box" style="text-align:center; padding:24px; border:1px solid #d2d0ce; border-radius:8px; background:#fff;">
+                <p style="margin:0 0 12px; font-weight:bold; color:var(--primary);">📝 Góp ý / Báo lỗi</p>
+                <a id="feedback-link" href="https://forms.gle/NdVxwTiSXKvBRehW7" target="_blank" rel="noopener"
+                   style="display:inline-block; padding:10px 24px; background:var(--primary); color:#fff; border-radius:4px; font-weight:bold; text-decoration:none;">
+                    Mở form phản hồi
+                </a>
+            </div>
         </div>
 
     </div>
@@ -671,6 +663,21 @@
 
 
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+        // --- Form phản hồi ---
+        // Link rút gọn forms.gle bị Google chặn khi nhúng iframe. Muốn hiện form ngay trong tab Giới thiệu,
+        // dán link nhúng chuẩn vào đây (Google Form > Gửi > biểu tượng <> > copy phần src).
+        const FEEDBACK_EMBED_URL = '';
+        (function initFeedbackForm() {
+            if (!FEEDBACK_EMBED_URL) return;
+            const box = document.getElementById('feedback-box');
+            if (!box) return;
+            const f = document.createElement('iframe');
+            f.src = FEEDBACK_EMBED_URL;
+            f.width = '100%'; f.height = '700'; f.frameBorder = '0';
+            f.style.cssText = 'border:1px solid #d2d0ce;border-radius:8px;background:#fff;';
+            box.replaceWith(f);
+        })();
 
         // --- Khai báo biến hệ thống ---
         let originalPdfBytes = null;
@@ -1118,18 +1125,16 @@
             else if (isBold) fontStyle = "bold";
             else if (isItalic) fontStyle = "italic";
 
-            let chosenFont;
-            try {
-                const fontBytes = await getUnicodeFontBytes(fontStyle);
-                chosenFont = await mergedPdfDoc.embedFont(fontBytes, { subset: true });
-            } catch (e) {
-                console.warn("Không tải được font Unicode, dùng font Helvetica dự phòng (có thể mất dấu):", e);
-                //chosenFont = await mergedPdfDoc.embedStandardFont(PDFLib.StandardFonts.Helvetica);
-				alert(
- "Không tải được font Unicode. Vui lòng kiểm tra thư mục fonts."
-);
-return;
-				
+            let chosenFont = null;
+            if (wmEnabled && wmText.trim() !== "") {
+                try {
+                    const fontBytes = await getUnicodeFontBytes(fontStyle);
+                    chosenFont = await mergedPdfDoc.embedFont(fontBytes, { subset: true });
+                } catch (e) {
+                    console.warn("Không tải được font Unicode cho watermark:", e);
+                    alert("Không tải được font Unicode cho watermark. Vui lòng kiểm tra thư mục fonts hoặc kết nối mạng.");
+                    return;
+                }
             }
 
             copiedPages.forEach((page, idx) => {
@@ -1188,19 +1193,21 @@ return;
         let mergeFilesArray = []; 
         function addMergeFiles(input) {
             const files = input.files; if (files.length === 0) return;
-            let loadedCount = 0;
-            for(let i = 0; i < files.length; i++) {
-                const file = files[i];
-                (async function(file) {
-                    try {
-                        const bytes = await fileToPdfBytes(file);
-                        const pdfDoc = await PDFLib.PDFDocument.load(bytes.slice(0));
-                        mergeFilesArray.push({ name: file.name, bytes: bytes, pageCount: pdfDoc.getPageCount() });
-                    } catch (e) { alert(`File "${file.name}" lỗi!`); }
-                    loadedCount++;
-                    if (loadedCount === files.length) { input.value = ""; renderMergeList(); }
-                })(file);
-            }
+            const list = Array.from(files);
+            Promise.all(list.map(async (file) => {
+                try {
+                    const bytes = await fileToPdfBytes(file);
+                    const pdfDoc = await PDFLib.PDFDocument.load(bytes.slice(0));
+                    return { name: file.name, bytes: bytes, pageCount: pdfDoc.getPageCount() };
+                } catch (e) { alert(`File "${file.name}" lỗi!`); return null; }
+            })).then(results => {
+                results.filter(Boolean).forEach(r => mergeFilesArray.push(r)); // giữ đúng thứ tự chọn
+                input.value = "";
+                renderMergeList();
+            });
+        }
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         }
         function renderMergeList() {
             const container = document.getElementById('file-list-container');
@@ -1213,7 +1220,7 @@ return;
             mergeFilesArray.forEach((fileObj, idx) => {
                 const item = document.createElement('div'); item.className = "file-item";
                 item.innerHTML = `
-                    <div class="file-item-info"><span class="file-item-name">${idx + 1}. ${fileObj.name}</span><span class="file-item-meta">Số trang: ${fileObj.pageCount} trang</span></div>
+                    <div class="file-item-info"><span class="file-item-name">${idx + 1}. ${escapeHtml(fileObj.name)}</span><span class="file-item-meta">Số trang: ${fileObj.pageCount} trang</span></div>
                     <div class="file-item-actions">
                         <button class="btn btn-small" onclick="moveMergeFile(${idx}, -1)" ${idx===0?'disabled':''}>▲</button>
                         <button class="btn btn-small" onclick="moveMergeFile(${idx}, 1)" ${idx===mergeFilesArray.length-1?'disabled':''}>▼</button>
@@ -1350,7 +1357,25 @@ return;
             } else {
                 textLayer.classList.add('drawing-active');
             }
+            const dc = document.getElementById('editor-draw-canvas');
+            if (dc) dc.style.cursor = (toolName === 'text') ? 'default' : 'crosshair';
             updateBrushPreview();
+        }
+
+        // --- Hình học mũi tên (dùng chung cho canvas và xuất PDF) ---
+        function getArrowGeometry(x1, y1, x2, y2, size) {
+            const dx = x2 - x1, dy = y2 - y1;
+            const len = Math.hypot(dx, dy);
+            if (len < 2) return null;
+            const ang = Math.atan2(dy, dx);
+            const headLen = Math.min(len * 0.6, Math.max(14, size * 4.5));
+            const spread = Math.PI / 7;
+            return {
+                tip: { x: x2, y: y2 },
+                left: { x: x2 - headLen * Math.cos(ang - spread), y: y2 - headLen * Math.sin(ang - spread) },
+                right: { x: x2 - headLen * Math.cos(ang + spread), y: y2 - headLen * Math.sin(ang + spread) },
+                shaftEnd: { x: x2 - headLen * 0.8 * Math.cos(ang), y: y2 - headLen * 0.8 * Math.sin(ang) }
+            };
         }
 
         function updateBrushPreview() {
@@ -1362,6 +1387,8 @@ return;
             // Kiểm tra xem tab editor đang hiển thị hoạt động hay không
             const isEditorActive = document.getElementById('tab-editor').classList.contains('active');
             if (!isEditorActive) return;
+            const t = e.target;
+            if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
 
             // Xử lý hoàn tác (Undo) bằng Ctrl + Z
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -1385,7 +1412,17 @@ return;
         });
 
         // Khởi tạo các sự kiện cho Canvas Vẽ
+        let drawEventsBound = false;
+        function getCanvasPos(e, canvas) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (e.clientX - rect.left) * (canvas.width / rect.width),
+                y: (e.clientY - rect.top) * (canvas.height / rect.height)
+            };
+        }
         function initDrawCanvasEvents() {
+            if (drawEventsBound) return; // tránh gắn trùng sự kiện mỗi lần mở file
+            drawEventsBound = true;
             const dCanvas = document.getElementById('editor-draw-canvas');
             const ctx = dCanvas.getContext('2d');
 
@@ -1403,12 +1440,14 @@ return;
             }, { passive: false });
 
             // Mousedown vẽ hình
-            dCanvas.addEventListener('mousedown', (e) => {
+            dCanvas.addEventListener('pointerdown', (e) => {
                 if (editorCurrentTool === 'text') return;
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
                 isDrawingShape = true;
-                const rect = dCanvas.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
+                try { dCanvas.setPointerCapture(e.pointerId); } catch (_) {}
+                const pos = getCanvasPos(e, dCanvas);
+                const mouseX = pos.x;
+                const mouseY = pos.y;
                 const strokeColor = document.getElementById('editor-stroke-color').value;
 
                 currentDrawShape = {
@@ -1420,19 +1459,34 @@ return;
                     startY: mouseY,
                     endX: mouseX,
                     endY: mouseY,
+                    vp: editorViewport, // viewport của đúng trang này (dùng khi xuất PDF)
                     points: [{x: mouseX, y: mouseY}] // Dành cho vẽ tự do
                 };
             });
 
             // Mousemove
-            dCanvas.addEventListener('mousemove', (e) => {
+            dCanvas.addEventListener('pointermove', (e) => {
                 if (!isDrawingShape || !currentDrawShape) return;
-                const rect = dCanvas.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
+                const pos = getCanvasPos(e, dCanvas);
+                const mouseX = pos.x;
+                const mouseY = pos.y;
 
-                currentDrawShape.endX = mouseX;
-                currentDrawShape.endY = mouseY;
+                let ex = mouseX, ey = mouseY;
+                if (e.shiftKey && currentDrawShape.type !== 'free') {
+                    const dx = ex - currentDrawShape.startX, dy = ey - currentDrawShape.startY;
+                    if (currentDrawShape.type === 'rect' || currentDrawShape.type === 'ellipse') {
+                        const m = Math.max(Math.abs(dx), Math.abs(dy));
+                        ex = currentDrawShape.startX + Math.sign(dx || 1) * m;
+                        ey = currentDrawShape.startY + Math.sign(dy || 1) * m;
+                    } else { // line, arrow: khoá góc theo bội số 45°
+                        const len = Math.hypot(dx, dy);
+                        const ang = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4);
+                        ex = currentDrawShape.startX + len * Math.cos(ang);
+                        ey = currentDrawShape.startY + len * Math.sin(ang);
+                    }
+                }
+                currentDrawShape.endX = ex;
+                currentDrawShape.endY = ey;
 
                 if (currentDrawShape.type === 'free') {
                     currentDrawShape.points.push({x: mouseX, y: mouseY});
@@ -1449,11 +1503,15 @@ return;
             });
 
             // Mouseup
-            window.addEventListener('mouseup', () => {
+            window.addEventListener('pointerup', () => {
                 if (isDrawingShape && currentDrawShape) {
                     isDrawingShape = false;
-                    editorShapes.push(currentDrawShape);
+                    const sh = currentDrawShape;
                     currentDrawShape = null;
+                    const tooSmall = (sh.type === 'free')
+                        ? sh.points.length < 2
+                        : Math.hypot(sh.endX - sh.startX, sh.endY - sh.startY) < 3; // click không kéo → bỏ
+                    if (!tooSmall) editorShapes.push(sh);
                     redrawPageShapes();
                 }
             });
@@ -1483,6 +1541,21 @@ return;
                 const cy = (shape.startY + shape.endY) / 2;
                 ctx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
                 ctx.stroke();
+            } else if (shape.type === 'arrow') {
+                const g = getArrowGeometry(shape.startX, shape.startY, shape.endX, shape.endY, shape.size);
+                if (!g) return;
+                // Thân mũi tên
+                ctx.moveTo(shape.startX, shape.startY);
+                ctx.lineTo(g.shaftEnd.x, g.shaftEnd.y);
+                ctx.stroke();
+                // Đầu mũi tên (tam giác đặc)
+                ctx.beginPath();
+                ctx.moveTo(g.tip.x, g.tip.y);
+                ctx.lineTo(g.left.x, g.left.y);
+                ctx.lineTo(g.right.x, g.right.y);
+                ctx.closePath();
+                ctx.fillStyle = shape.color;
+                ctx.fill();
             }
         }
 
@@ -1524,7 +1597,7 @@ return;
                     document.getElementById('editor-file-status').style.color = 'var(--success)';
                     document.getElementById('editor-empty').style.display = 'none';
                     document.getElementById('editor-page-shell').style.display = 'inline-block';
-                    //document.getElementById('editor-download-btn').disabled = false;
+                    document.getElementById('editor-download-btn').disabled = false;
                     
                     initDrawCanvasEvents();
                     await editorRenderPage();
@@ -1690,6 +1763,34 @@ return;
             });
         }
 
+        // Lấy mẫu màu chữ (điểm tối nhất) và màu nền (điểm ngay ngoài khung) từ canvas PDF gốc
+        function sampleTextColors(originalItem) {
+            const res = { color: '#000000', bg: '#ffffff' };
+            try {
+                const cv = document.getElementById('editor-pdf-canvas');
+                const ctx = cv.getContext('2d', { willReadFrequently: true });
+                const [vx, vy] = editorViewport.convertToViewportPoint(originalItem.transform[4], originalItem.transform[5]);
+                const w = Math.max(1, Math.round(originalItem.width * editorScale));
+                const h = Math.max(1, Math.round(originalItem.height * editorScale));
+                const x0 = Math.max(0, Math.round(vx)), y0 = Math.max(0, Math.round(vy - h));
+                const rw = Math.min(w, cv.width - x0), rh = Math.min(h, cv.height - y0);
+                if (rw > 0 && rh > 0) {
+                    const d = ctx.getImageData(x0, y0, rw, rh).data;
+                    let minL = 1e9, best = null;
+                    for (let i = 0; i < d.length; i += 4) {
+                        const L = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+                        if (L < minL) { minL = L; best = [d[i], d[i+1], d[i+2]]; }
+                    }
+                    const hex = c => '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
+                    if (best && minL < 200) res.color = hex(best);
+                }
+                const bx = Math.max(0, x0 - 3), by = Math.min(cv.height - 1, Math.max(0, y0 + Math.floor(h / 2)));
+                const bp = ctx.getImageData(bx, by, 1, 1).data;
+                res.bg = '#' + [bp[0], bp[1], bp[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+            } catch (e) { /* giữ mặc định đen/trắng */ }
+            return res;
+        }
+
         function savePositionAndText(span, originalItem, index) {
             const htmlLeft = parseFloat(span.style.left);
             const htmlTop = parseFloat(span.style.top);
@@ -1702,9 +1803,13 @@ return;
             const isBold = span.classList.contains('is-bold');
             const isItalic = span.classList.contains('is-italic');
 
+            const prev = existingIndex !== -1 ? modifiedTexts[existingIndex] : null;
+            const cols = prev && prev.color ? { color: prev.color, bg: prev.bgColor } : sampleTextColors(originalItem);
             const changeData = {
                 key: key,
                 page: editorPage,
+                color: cols.color,
+                bgColor: cols.bg,
                 index: index,
                 text: span.textContent,
                 origX: originalItem.transform[4],
@@ -1765,13 +1870,11 @@ input.addEventListener('keydown', (e) => {
     if (isB) {
         input.classList.toggle('is-bold');
         span.classList.toggle('is-bold');
-        change.isBold = span.classList.contains('is-bold');   // <-- thêm
     }
 
     if (isI) {
         input.classList.toggle('is-italic');
         span.classList.toggle('is-italic');
-        change.isItalic = span.classList.contains('is-italic'); // <-- thêm
     }
 });
 
@@ -1785,6 +1888,7 @@ input.addEventListener('keydown', (e) => {
 
                 input.remove();
 
+                const _sampled = (modifiedTexts.find(m => m.key === `${editorPage}_${index}`) || {}).color ? null : sampleTextColors(originalItem);
                 span.classList.add('modified');
                 maskOriginalPosition(index, originalItem, tx);
 
@@ -1796,9 +1900,13 @@ input.addEventListener('keydown', (e) => {
                 const key = `${editorPage}_${index}`;
                 const existingIndex = modifiedTexts.findIndex(item => item.key === key);
                 
+                const prev = existingIndex !== -1 ? modifiedTexts[existingIndex] : null;
+                const cols = prev && prev.color ? { color: prev.color, bg: prev.bgColor } : (_sampled || sampleTextColors(originalItem));
                 const changeData = {
                     key: key,
                     page: editorPage,
+                    color: cols.color,
+                    bgColor: cols.bg,
                     index: index,
                     text: newText,
                     origX: originalItem.transform[4],
@@ -1836,6 +1944,7 @@ async function fetchFontWithFallback(style) {
     // Thay đổi các URL dự phòng ổn định hơn, tránh bị lỗi CORS hoặc lỗi tải file
     const urls = [
         `https://raw.githubusercontent.com/bpampuch/pdfmake/master/examples/fonts/Roboto-${fontName.replace('Roboto-', '')}`,
+        `https://cdn.jsdelivr.net/gh/bpampuch/pdfmake@0.1.66/examples/fonts/${fontName}`,
         `https://cdn.jsdelivr.net/npm/pdfmake@0.1.66/fonts/Roboto/${fontName}`,
         `https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/${fontName}`
     ];
@@ -1892,14 +2001,20 @@ async function getUnicodeFontBytes(style = "regular") {
     }
     catch (err) {
 
-        console.error(err);
+        console.warn("Không có font local, thử tải từ CDN:", err);
 
-        alert(
-            "Không tải được font Unicode.\n" +
-            "Hãy kiểm tra thư mục:\nfonts/"
-        );
-
-        throw err;
+        try {
+            const buffer = await fetchFontWithFallback(style);
+            cachedUnicodeFontBytes[style] = buffer;
+            return buffer;
+        } catch (cdnErr) {
+            console.error(cdnErr);
+            alert(
+                "Không tải được font Unicode.\n" +
+                "Hãy kiểm tra thư mục fonts/ hoặc kết nối mạng."
+            );
+            throw cdnErr;
+        }
     }
 }
 
@@ -1907,9 +2022,9 @@ async function editorExportPDF() {
             if (!editorPdfDataBytes) return;
             logAction("edit_pdf");
 
-            //const btn = document.getElementById('editor-download-btn');
-            //btn.textContent = 'Đang xử lý xuất PDF...';
-            //btn.disabled = true;
+            const btn = document.getElementById('editor-download-btn');
+            btn.textContent = 'Đang xử lý xuất PDF...';
+            btn.disabled = true;
 
             try {
                 const pdfDoc = await PDFLib.PDFDocument.load(editorPdfDataBytes);
@@ -1922,24 +2037,31 @@ async function editorExportPDF() {
 
                 const pages = pdfDoc.getPages();
                 
-                // Tải trực tiếp font từ thư mục /fonts/ để hiển thị đầy đủ chữ ĐƠN ĐẶT HÀNG
+                // Tải font Roboto: ưu tiên thư mục ./fonts/, không có thì tải từ CDN, cuối cùng mới dùng Helvetica
                 let regularFont, boldFont, italicFont, boldItalicFont;
+                let usingStdFont = false;
+                let fontBytesList = null;
                 try {
-                    const [regularBytes, boldBytes, italicBytes, boldItalicBytes] = await Promise.all([
-                        fetch('./fonts/Roboto-Regular.ttf').then(res => { if(!res.ok) throw new Error(); return res.arrayBuffer(); }),
-                        fetch('./fonts/Roboto-Bold.ttf').then(res => { if(!res.ok) throw new Error(); return res.arrayBuffer(); }),
-                        fetch('./fonts/Roboto-Italic.ttf').then(res => { if(!res.ok) throw new Error(); return res.arrayBuffer(); }),
-                        fetch('./fonts/Roboto-BoldItalic.ttf').then(res => { if(!res.ok) throw new Error(); return res.arrayBuffer(); })
-                    ]);
-
-                    regularFont    = await pdfDoc.embedFont(regularBytes,    { subset: true });
-                    boldFont       = await pdfDoc.embedFont(boldBytes,       { subset: true });
-                    italicFont     = await pdfDoc.embedFont(italicBytes,     { subset: true });
-                    boldItalicFont = await pdfDoc.embedFont(boldItalicBytes, { subset: true });
-                } catch (fontError) {
-                    console.warn("Không tải được font từ thư mục fonts/, chuyển sang font Helvetica dự phòng:", fontError);
-                    alert("Cảnh báo: Không tìm thấy file font Roboto trong thư mục fonts/. Vui lòng kiểm tra lại đường dẫn file.");
-                    
+                    fontBytesList = await Promise.all([
+                        './fonts/Roboto-Regular.ttf', './fonts/Roboto-Bold.ttf',
+                        './fonts/Roboto-Italic.ttf', './fonts/Roboto-BoldItalic.ttf'
+                    ].map(u => fetch(u).then(res => { if (!res.ok) throw new Error(u); return res.arrayBuffer(); })));
+                } catch (localErr) {
+                    console.warn("Không có font local, thử tải từ CDN:", localErr);
+                    try {
+                        fontBytesList = await Promise.all(['regular', 'bold', 'italic', 'bolditalic'].map(fetchFontWithFallback));
+                    } catch (cdnErr) {
+                        fontBytesList = null;
+                    }
+                }
+                if (fontBytesList) {
+                    regularFont    = await pdfDoc.embedFont(fontBytesList[0], { subset: true });
+                    boldFont       = await pdfDoc.embedFont(fontBytesList[1], { subset: true });
+                    italicFont     = await pdfDoc.embedFont(fontBytesList[2], { subset: true });
+                    boldItalicFont = await pdfDoc.embedFont(fontBytesList[3], { subset: true });
+                } else {
+                    usingStdFont = true;
+                    alert("Cảnh báo: Không tải được font Roboto. Chữ tiếng Việt sẽ bị bỏ dấu khi xuất PDF.");
                     regularFont    = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.Helvetica);
                     boldFont       = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBold);
                     italicFont     = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaOblique);
@@ -1957,7 +2079,7 @@ async function editorExportPDF() {
                         y: change.origY - descenderOffset,
                         width: change.origWidth + 4,
                         height: change.fontSize + descenderOffset + 2,
-                        color: PDFLib.rgb(1, 1, 1),
+                        color: (() => { const c = hexToRgb(change.bgColor || '#ffffff'); return PDFLib.rgb(c.r, c.g, c.b); })(),
                     });
                 });
 
@@ -1973,12 +2095,12 @@ async function editorExportPDF() {
                     else if (change.isItalic) targetFont = italicFont;
 
                     // Giữ nguyên văn bản có dấu tiếng Việt
-                    pageObj.drawText(change.text, {
+                    pageObj.drawText(usingStdFont ? removeVietnameseTones(change.text) : change.text, {
                         x: change.x,
                         y: change.y,
                         size: change.fontSize,
                         font: targetFont,
-                        color: PDFLib.rgb(0, 0, 0)
+                        color: (() => { const c = hexToRgb(change.color || '#000000'); return PDFLib.rgb(c.r, c.g, c.b); })()
                     });
                 });
 
@@ -1989,8 +2111,9 @@ async function editorExportPDF() {
                     const pdfLibColor = PDFLib.rgb(rgb.r, rgb.g, rgb.b);
                     const finalThickness = shape.size / editorScale;
 
-                    const [pStartX, pStartY] = editorViewport.convertToPdfPoint(shape.startX, shape.startY);
-                    const [pEndX, pEndY] = editorViewport.convertToPdfPoint(shape.endX, shape.endY);
+                    const vp = shape.vp || editorViewport;
+                    const [pStartX, pStartY] = vp.convertToPdfPoint(shape.startX, shape.startY);
+                    const [pEndX, pEndY] = vp.convertToPdfPoint(shape.endX, shape.endY);
 
                     if (shape.type === 'line') {
                         pageObj.drawLine({
@@ -2017,18 +2140,34 @@ async function editorExportPDF() {
                         const rx = Math.abs(pStartX - pEndX) / 2;
                         const ry = Math.abs(pStartY - pEndY) / 2;
                         
-                        pageObj.drawCircle({
+                        pageObj.drawEllipse({
                             x: cx, y: cy,
-                            size: Math.max(rx, ry),
+                            xScale: rx, yScale: ry,
                             borderWidth: finalThickness,
                             borderColor: pdfLibColor,
                             borderOpacity: 1
                         });
+                    } else if (shape.type === 'arrow') {
+                        const g = getArrowGeometry(shape.startX, shape.startY, shape.endX, shape.endY, shape.size);
+                        if (!g) return;
+                        const toPdf = (pt) => { const [X, Y] = vp.convertToPdfPoint(pt.x, pt.y); return { x: X, y: Y }; };
+                        const pShaftEnd = toPdf(g.shaftEnd), pTip = toPdf(g.tip), pL = toPdf(g.left), pR = toPdf(g.right);
+                        pageObj.drawLine({
+                            start: { x: pStartX, y: pStartY },
+                            end: pShaftEnd,
+                            thickness: finalThickness,
+                            color: pdfLibColor,
+                        });
+                        // drawSvgPath đảo trục Y nên truyền -y để ra đúng toạ độ PDF
+                        pageObj.drawSvgPath(
+                            `M ${pTip.x} ${-pTip.y} L ${pL.x} ${-pL.y} L ${pR.x} ${-pR.y} Z`,
+                            { x: 0, y: 0, color: pdfLibColor, borderWidth: 0 }
+                        );
                     } else if (shape.type === 'free') {
                         if (shape.points.length < 2) return;
                         for (let k = 0; k < shape.points.length - 1; k++) {
-                            const [pt1X, pt1Y] = editorViewport.convertToPdfPoint(shape.points[k].x, shape.points[k].y);
-                            const [pt2X, pt2Y] = editorViewport.convertToPdfPoint(shape.points[k+1].x, shape.points[k+1].y);
+                            const [pt1X, pt1Y] = vp.convertToPdfPoint(shape.points[k].x, shape.points[k].y);
+                            const [pt2X, pt2Y] = vp.convertToPdfPoint(shape.points[k+1].x, shape.points[k+1].y);
                             pageObj.drawLine({
                                 start: { x: pt1X, y: pt1Y },
                                 end: { x: pt2X, y: pt2Y },
@@ -2053,8 +2192,8 @@ async function editorExportPDF() {
                 console.error(error);
                 alert('Lỗi xuất file: ' + error.message);
             } finally {
-                //btn.textContent = '💾 XUẤT FILE ĐÃ SỬA CHỮ';
-                //btn.disabled = false;
+                btn.textContent = '💾 XUẤT FILE ĐÃ SỬA';
+                btn.disabled = false;
             }
         }
 
@@ -2070,10 +2209,11 @@ async function editorExportPDF() {
         function logAction(action) {
             fetch("https://script.google.com/macros/s/AKfycbxP1LuGZJ3qeNwa7ou-aAqFa01dX3P2uDWyRnpzb_Jec2OY0nc2OwuxFEInQNOaDnvU/exec", {
                 method: "POST",
+                mode: "no-cors",
                 body: new URLSearchParams({
                     action: action
                 })
-            });
+            }).catch(() => {});
         }
 
 
@@ -2109,7 +2249,7 @@ if (modifiedTexts && modifiedTexts.length) {
 
         tempCtx.save();
 
-        tempCtx.fillStyle = "#FFFFFF";
+        tempCtx.fillStyle = change.bgColor || "#FFFFFF";
         tempCtx.fillRect( oldX - 3,  oldY - h - 2,    w + 6, h + 6 );
 
 const weight = change.isBold ? "bold" : "normal";
@@ -2117,7 +2257,7 @@ const style  = change.isItalic ? "italic" : "normal";
 
 tempCtx.font = `${style} ${weight} ${change.fontSize * editorScale}px Arial`;
 
-        tempCtx.fillStyle = "#000";
+        tempCtx.fillStyle = change.color || "#000";
         tempCtx.textBaseline = "alphabetic";
         tempCtx.fillText(change.text, newX, newY);
         tempCtx.restore();
@@ -2186,6 +2326,10 @@ async function printAllEditorPages() {
     }
 
     const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+        alert("Trình duyệt đã chặn cửa sổ Popup. Vui lòng cho phép hiện Popup để in!");
+        return;
+    }
     let html = `
     <html>
     <head>
@@ -2239,13 +2383,22 @@ async function printAllEditorPages() {
             const h = t.fontSize * editorScale;
             const w = t.origWidth * editorScale;
 
-            ctx.fillStyle="#fff";
+            ctx.fillStyle=t.bgColor || "#fff";
             ctx.fillRect(oldPos[0]-2,oldPos[1]-h-2,w+4,h+4);
 
             ctx.font=`${t.isItalic?"italic ":""}${t.isBold?"bold ":""}${h}px Arial`;
             ctx.fillStyle=t.color || "#000";
             ctx.textBaseline="alphabetic";
             ctx.fillText(t.text,newPos[0],newPos[1]);
+        });
+
+        // Vẽ các hình (vuông, tròn, mũi tên, nét vẽ...) của trang này
+        editorShapes.filter(sh => sh.page === p).forEach(sh => {
+            ctx.strokeStyle = sh.color;
+            ctx.lineWidth = sh.size;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            drawSingleShape(ctx, sh);
         });
 
         html += `<img src="${temp.toDataURL("image/png")}">`;
