@@ -3,6 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        (function () {
+            var t = null;
+            try { t = localStorage.getItem('pdftool-theme'); } catch (e) {}
+            if (!t) t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
     <title>PDF tool by hachihi.vn - 0933842126, support by: Hải Hoàng 09-1800-1944</title>
     <!-- lid-->
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
@@ -240,6 +248,112 @@
 		
 		
 		
+
+        /* ===================== DARK MODE ===================== */
+        .theme-toggle {
+            margin-left: auto; align-self: center; flex-shrink: 0;
+            padding: 5px 12px; margin-bottom: 4px; cursor: pointer; font-size: 13px; font-weight: bold;
+            border: 1px solid #b3b0ad; border-radius: 14px; background: transparent; color: var(--text-color);
+            white-space: nowrap;
+        }
+        .theme-toggle:hover { background: rgba(0,0,0,0.08); }
+
+        html[data-theme="dark"] { color-scheme: dark; }
+        html[data-theme="dark"] {
+            --primary: #1f6fb8;
+            --primary-hover: #2a86d8;
+            --success: #178a4c;
+            --danger: #c42b2b;
+            --bg-color: #17191c;
+            --text-color: #e6e8eb;
+        }
+        html[data-theme="dark"] body { background-color: var(--bg-color); color: var(--text-color); }
+        html[data-theme="dark"] .nav-tabs { background-color: #202327; border-bottom-color: #3a3f47; }
+        html[data-theme="dark"] .tab-btn.active { background-color: #25282e; border-color: #3a3f47; border-bottom-color: #25282e; }
+        html[data-theme="dark"] .tab-btn.active,
+        html[data-theme="dark"] .card-title,
+        html[data-theme="dark"] .brush-status,
+        html[data-theme="dark"] [style*="color: var(--primary)"],
+        html[data-theme="dark"] [style*="color:var(--primary)"] { color: #6cb4ff !important; }
+        html[data-theme="dark"] .theme-toggle { border-color: #555b65; }
+        html[data-theme="dark"] .theme-toggle:hover { background: rgba(255,255,255,0.08); }
+
+        html[data-theme="dark"] .right-panel,
+        html[data-theme="dark"] .card,
+        html[data-theme="dark"] .about-container,
+        html[data-theme="dark"] .editor-pagebar,
+        html[data-theme="dark"] #feedback-box { background: #25282e !important; border-color: #3a3f47 !important; }
+        html[data-theme="dark"] .card { box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
+
+        html[data-theme="dark"] .grid-container,
+        html[data-theme="dark"] .file-list,
+        html[data-theme="dark"] .compare-pane,
+        html[data-theme="dark"] .overlay-container { background: #1d2024; border-color: #3a3f47; }
+        html[data-theme="dark"] .editor-sidebar { background: #202327; border-right-color: #3a3f47; }
+        html[data-theme="dark"] .editor-main { background: #14161a; }
+
+        html[data-theme="dark"] .page-box,
+        html[data-theme="dark"] .file-item { background: #2b2f36; border-color: #3d424b; }
+        html[data-theme="dark"] .page-box.drag-over { background: #1e3a55; }
+        html[data-theme="dark"] .page-info,
+        html[data-theme="dark"] .file-item-name { color: #e6e8eb; }
+        html[data-theme="dark"] .file-item-meta { color: #a3a9b1; }
+        html[data-theme="dark"] .preview-header,
+        html[data-theme="dark"] .pagination-container { border-color: #3a3f47; }
+
+        html[data-theme="dark"] input[type="text"],
+        html[data-theme="dark"] input[type="number"],
+        html[data-theme="dark"] select,
+        html[data-theme="dark"] textarea { background: #1b1e22; color: #e6e8eb; border-color: #4a505a; }
+        html[data-theme="dark"] input[type="color"] { background: #1b1e22; border-color: #4a505a !important; }
+
+        html[data-theme="dark"] .btn:disabled,
+        html[data-theme="dark"] .page-nav-btn:disabled { background-color: #3a3f47; color: #7d848d; }
+        html[data-theme="dark"] .btn-tool { background-color: #2f343b; color: #e6e8eb; border-color: #4a505a; }
+        html[data-theme="dark"] .btn-tool:hover { background-color: #3a4048; }
+        html[data-theme="dark"] .btn-tool.active { background-color: var(--primary); color: #fff; border-color: var(--primary); }
+
+        html[data-theme="dark"] .inline-group label,
+        html[data-theme="dark"] .editor-hint,
+        html[data-theme="dark"] [style*="color:#555"],
+        html[data-theme="dark"] [style*="color: #555"],
+        html[data-theme="dark"] [style*="color:#333"],
+        html[data-theme="dark"] [style*="color:#666"],
+        html[data-theme="dark"] [style*="color:gray"],
+        html[data-theme="dark"] [style*="color: gray"] { color: #a9afb8 !important; }
+        html[data-theme="dark"] [style*="color:#c00"] { color: #ff8a8a !important; }
+        html[data-theme="dark"] [style*="color: var(--success)"],
+        html[data-theme="dark"] [style*="color:var(--success)"] { color: #4cd489 !important; }
+        html[data-theme="dark"] [style*="color: var(--danger)"],
+        html[data-theme="dark"] [style*="color:var(--danger)"] { color: #ff7b7b !important; }
+        html[data-theme="dark"] #undo-btn { background-color: #4a505a !important; }
+        html[data-theme="dark"] #undo-btn:disabled { background-color: #33373e !important; }
+        html[data-theme="dark"] [style*="color:#333"] b,
+        html[data-theme="dark"] .editor-hint b { color: #e6e8eb; }
+        html[data-theme="dark"] hr { border-top-color: #3a3f47 !important; }
+        html[data-theme="dark"] .about-container h1 span,
+        html[data-theme="dark"] .about-container p,
+        html[data-theme="dark"] .about-container li { color: #d5d9de; }
+        html[data-theme="dark"] .about-container p[style*="font-style:italic"] { color: #6cb4ff; }
+
+        /* Trang PDF luôn giữ nền trắng để nội dung hiển thị đúng màu */
+        html[data-theme="dark"] .editor-container-shell,
+        html[data-theme="dark"] .canvas-wrapper,
+        html[data-theme="dark"] .compare-pane canvas,
+        html[data-theme="dark"] .overlay-canvas { background: #ffffff; }
+        html[data-theme="dark"] .editor-container-shell { box-shadow: 0 4px 16px rgba(0,0,0,0.6); }
+        html[data-theme="dark"] .compare-pane canvas { box-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+
+        html[data-theme="dark"] ::-webkit-scrollbar { width: 12px; height: 12px; }
+        html[data-theme="dark"] ::-webkit-scrollbar-track { background: #1b1e22; }
+        html[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #454b55; border-radius: 6px; border: 2px solid #1b1e22; }
+        html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #5a616c; }
+
+        /* In ấn luôn dùng giao diện sáng */
+        @media print {
+            html[data-theme="dark"] body { background: #fff !important; color: #000 !important; }
+        }
+
 		/* Cấu hình đặc biệt dành riêng cho việc in ấn */
 @media print {
     /* Khi trạng thái in từ nút bấm được kích hoạt */
@@ -297,6 +411,7 @@
         <button class="tab-btn" onclick="switchTab('tab-compare', this)">⚖️ Chế độ So Sánh</button>
         <button class="tab-btn" onclick="switchTab('tab-editor', this)">✏️ Chỉnh Sửa PDF</button>
         <button class="tab-btn" onclick="switchTab('tab-about', this)">ℹ️ Giới Thiệu</button>
+        <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Chuyển chế độ Sáng / Tối" aria-label="Chuyển chế độ Sáng / Tối">🌙 Chế độ tối</button>
     </div>
 
     <!-- T1: Sắp xếp -->
@@ -663,6 +778,19 @@
 
 
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+        // --- Chế độ Sáng / Tối ---
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            const btn = document.getElementById('theme-toggle');
+            if (btn) btn.textContent = (theme === 'dark') ? '☀️ Chế độ sáng' : '🌙 Chế độ tối';
+        }
+        function toggleTheme() {
+            const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            applyTheme(next);
+            try { localStorage.setItem('pdftool-theme', next); } catch (e) {}
+        }
+        applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
 
         // --- Form phản hồi ---
         // Link rút gọn forms.gle bị Google chặn khi nhúng iframe. Muốn hiện form ngay trong tab Giới thiệu,
