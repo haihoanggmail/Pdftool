@@ -188,9 +188,17 @@ function getEmbeddedFont(style) {
             transform-origin: 0% 0%;
             user-select: none;
             box-sizing: border-box;
-            z-index: 2;
+            z-index: 3;
             pointer-events: auto;
         }
+        .editor-img-box {
+            position: absolute; z-index: 2; cursor: move; box-sizing: border-box;
+            pointer-events: auto; background-size: 100% 100%; background-repeat: no-repeat;
+            user-select: none;
+        }
+        .editor-img-box:hover { outline: 1px dashed var(--primary); background-color: rgba(0, 90, 158, 0.08); }
+        .editor-img-box.modified { outline: 1px solid rgba(0, 90, 158, 0.3); }
+        .editor-img-box.dragging { opacity: 0.85; box-shadow: 0 4px 12px rgba(0,0,0,0.25); z-index: 100; }
         .editor-text-layer span:hover {
             background-color: rgba(0, 90, 158, 0.1) !important;
             outline: 1px dashed var(--primary);
@@ -208,7 +216,7 @@ function getEmbeddedFont(style) {
         
         .original-mask {
             position: absolute;
-            background-color: #ffffff !important;
+            background-color: var(--mask-bg, #ffffff) !important;
             z-index: 1;
             pointer-events: none;
         }
@@ -568,6 +576,10 @@ function getEmbeddedFont(style) {
                         <label style="font-size:11px; font-weight:600; color:#555;">Màu chữ (khi sửa chữ):</label>
                         <input type="color" id="editor-text-color" value="#000000" style="width:100%; height:32px; padding:0; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer;">
                         <p class="editor-hint">Click đúp vào chữ → chọn màu ở đây → nhấn <b>Enter</b> để lưu. Mặc định lấy đúng màu chữ gốc.</p>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label style="font-size:11px; font-weight:600; color:#555;">Cỡ chữ (pt):</label>
+                        <input type="number" id="editor-text-size" min="4" max="200" step="0.5" value="12">
                     </div>
                     <div class="brush-status" id="brush-size-status">Độ dày nét: 3px (Cuộn chuột để thay đổi)</div>
                 </div>
@@ -1282,6 +1294,7 @@ async function savePDF() {
     const finalFileName = mainFileName ? `${mainFileName}_mod.pdf` : 'tai_lieu_edited.pdf';
     link.download = finalFileName;
     link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 60000);
 }
 
 let mergeFilesArray = [];
@@ -1379,6 +1392,7 @@ async function generateMergedPDF() {
     link.href = URL.createObjectURL(blob);
     link.download = 'tai_lieu_gop_tong_hop.pdf';
     link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 60000);
 }
 
 let compareDoc1 = null, compareDoc2 = null, currentComparePage = 0, maxComparePages = 0, compareRenderTaskId = 0;
@@ -1542,6 +1556,10 @@ let editorScale = 1.5;
 
 let modifiedTexts = [];
 
+let modifiedImages = [];
+
+let editorSeq = 0;
+
 let editorCurrentTool = 'text';
 
 let editorShapes = [];
@@ -1611,7 +1629,12 @@ document.addEventListener('keydown', function(e) {
                 redrawPageShapes();
             }
         } else {
-            if (modifiedTexts.length > 0) {
+            const _lt = modifiedTexts.length ? (modifiedTexts[modifiedTexts.length - 1]._seq || 0) : -1;
+            const _li = modifiedImages.length ? (modifiedImages[modifiedImages.length - 1]._seq || 0) : -1;
+            if (_li > _lt) {
+                modifiedImages.pop();
+                editorRenderPage();
+            } else if (modifiedTexts.length > 0) {
                 modifiedTexts.pop();
                 editorRenderPage();
             }
@@ -1783,6 +1806,7 @@ async function editorLoadFile(input) {
     reader.onload = async function() {
         editorPdfDataBytes = this.result.slice(0);
         modifiedTexts = [];
+        modifiedImages = [];
         editorShapes = [];
         editorPage = 1;
         try {
@@ -1846,6 +1870,10 @@ async function editorRenderPage() {
             span.style.top = `${savedChange.htmlTop}px`;
             span.classList.add('modified');
             span.style.setProperty('--txt-color', savedChange.color || '#000000');
+            if (savedChange.fontSize) {
+                span._ptSize = savedChange.fontSize;
+                span.style.fontSize = `${savedChange.fontSize * editorScale}px`;
+            }
             if (savedChange.isBold) span.classList.add('is-bold');
             if (savedChange.isItalic) span.classList.add('is-italic');
             maskOriginalPosition(index, item, tx);
@@ -1853,7 +1881,182 @@ async function editorRenderPage() {
         enableDragAndEdit(span, item, index, tx);
         textLayerDiv.appendChild(span);
     });
+    try {
+        await buildImageBoxes(page, textLayerDiv, canvas);
+    } catch (e) {
+        console.warn('Không dò được ảnh trong trang:', e);
+    }
     redrawPageShapes();
+}
+
+function mulMatrix(m1, m2) {
+    return [
+        m1[0] * m2[0] + m1[2] * m2[1], m1[1] * m2[0] + m1[3] * m2[1],
+        m1[0] * m2[2] + m1[2] * m2[3], m1[1] * m2[2] + m1[3] * m2[3],
+        m1[0] * m2[4] + m1[2] * m2[5] + m1[4], m1[1] * m2[4] + m1[3] * m2[5] + m1[5]
+    ];
+}
+
+async function detectPageImages(page) {
+    const OPS = pdfjsLib.OPS;
+    const opList = await page.getOperatorList();
+    let ctm = [ 1, 0, 0, 1, 0, 0 ];
+    const stack = [];
+    const found = [];
+    const view = page.view;
+    const pageArea = Math.abs((view[2] - view[0]) * (view[3] - view[1]));
+    for (let i = 0; i < opList.fnArray.length; i++) {
+        const fn = opList.fnArray[i];
+        const args = opList.argsArray[i];
+        if (fn === OPS.save) {
+            stack.push(ctm.slice());
+        } else if (fn === OPS.restore) {
+            if (stack.length) ctm = stack.pop();
+        } else if (fn === OPS.transform) {
+            ctm = mulMatrix(ctm, args);
+        } else if (fn === OPS.paintFormXObjectBegin) {
+            stack.push(ctm.slice());
+            if (args && args[0]) ctm = mulMatrix(ctm, args[0]);
+        } else if (fn === OPS.paintFormXObjectEnd) {
+            if (stack.length) ctm = stack.pop();
+        } else if (fn === OPS.paintImageXObject || fn === OPS.paintInlineImageXObject || fn === OPS.paintImageMaskXObject) {
+            const xs = [ ctm[4], ctm[0] + ctm[4], ctm[2] + ctm[4], ctm[0] + ctm[2] + ctm[4] ];
+            const ys = [ ctm[5], ctm[1] + ctm[5], ctm[3] + ctm[5], ctm[1] + ctm[3] + ctm[5] ];
+            const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+            const w = x1 - x0, h = y1 - y0;
+            if (!isFinite(w) || !isFinite(h)) continue;
+            if (w < 8 || h < 8) continue;
+            if (w * h > pageArea * 0.85) continue;
+            found.push({ x0, y0, x1, y1 });
+        }
+    }
+    return found;
+}
+
+function imgBoxViewportRect(vp, b) {
+    const [ax, ay] = vp.convertToViewportPoint(b.x0, b.y0);
+    const [bx, by] = vp.convertToViewportPoint(b.x1, b.y1);
+    return { left: Math.min(ax, bx), top: Math.min(ay, by), width: Math.abs(bx - ax), height: Math.abs(by - ay) };
+}
+
+function sampleBgAround(cv, r) {
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    const off = 3;
+    const pts = [
+        [ r.left - off, r.top - off ], [ r.left + r.width + off, r.top - off ],
+        [ r.left - off, r.top + r.height + off ], [ r.left + r.width + off, r.top + r.height + off ],
+        [ r.left + r.width / 2, r.top - off ], [ r.left + r.width / 2, r.top + r.height + off ],
+        [ r.left - off, r.top + r.height / 2 ], [ r.left + r.width + off, r.top + r.height / 2 ]
+    ];
+    const counts = {};
+    let best = null, bestN = 0;
+    pts.forEach(([x, y]) => {
+        x = Math.round(x); y = Math.round(y);
+        if (x < 0 || y < 0 || x >= cv.width || y >= cv.height) return;
+        const d = ctx.getImageData(x, y, 1, 1).data;
+        const k = [ d[0] >> 3, d[1] >> 3, d[2] >> 3 ].join(',');
+        counts[k] = (counts[k] || 0) + 1;
+        if (counts[k] > bestN) { bestN = counts[k]; best = d; }
+    });
+    if (!best) return '#ffffff';
+    return '#' + [ best[0], best[1], best[2] ].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+function cropCanvasToDataURL(cv, r) {
+    const x = Math.max(0, Math.floor(r.left)), y = Math.max(0, Math.floor(r.top));
+    const w = Math.max(1, Math.min(cv.width - x, Math.ceil(r.width))), h = Math.max(1, Math.min(cv.height - y, Math.ceil(r.height)));
+    const tmp = document.createElement('canvas');
+    tmp.width = w; tmp.height = h;
+    tmp.getContext('2d').drawImage(cv, x, y, w, h, 0, 0, w, h);
+    return tmp.toDataURL('image/png');
+}
+
+async function buildImageBoxes(page, textLayerDiv, pdfCanvas) {
+    if (page.rotate && page.rotate % 360 !== 0) return;
+    const images = await detectPageImages(page);
+    images.forEach((b, idx) => {
+        const key = `${editorPage}_img${idx}`;
+        const r = imgBoxViewportRect(editorViewport, b);
+        const saved = modifiedImages.find(m => m.key === key);
+        const box = document.createElement('div');
+        box.className = 'editor-img-box';
+        box.title = 'Kéo để di chuyển ảnh • Click đúp để trả về vị trí cũ';
+        box.style.left = r.left + 'px';
+        box.style.top = r.top + 'px';
+        box.style.width = r.width + 'px';
+        box.style.height = r.height + 'px';
+        const addMask = bg => {
+            const mask = document.createElement('div');
+            mask.className = 'original-mask';
+            mask.setAttribute('data-img-index', idx);
+            mask.style.setProperty('--mask-bg', bg);
+            mask.style.left = (r.left - 1) + 'px';
+            mask.style.top = (r.top - 1) + 'px';
+            mask.style.width = (r.width + 2) + 'px';
+            mask.style.height = (r.height + 2) + 'px';
+            textLayerDiv.appendChild(mask);
+        };
+        const showCrop = () => {
+            box.style.backgroundImage = `url(${cropCanvasToDataURL(pdfCanvas, r)})`;
+            box.classList.add('modified');
+        };
+        if (saved) {
+            box.style.left = saved.htmlLeft + 'px';
+            box.style.top = saved.htmlTop + 'px';
+            showCrop();
+            addMask(saved.bgColor);
+        }
+        textLayerDiv.appendChild(box);
+        let prepared = !!saved;
+        let bgColor = saved ? saved.bgColor : null;
+        box.addEventListener('mousedown', e => {
+            if (editorCurrentTool !== 'text' || e.button !== 0) return;
+            e.preventDefault();
+            const startX = e.clientX, startY = e.clientY;
+            const startLeft = parseFloat(box.style.left), startTop = parseFloat(box.style.top);
+            let moved = false;
+            const onMove = ev => {
+                const dx = ev.clientX - startX, dy = ev.clientY - startY;
+                if (!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+                if (!moved) {
+                    moved = true;
+                    if (!prepared) {
+                        bgColor = sampleBgAround(pdfCanvas, r);
+                        showCrop();
+                        addMask(bgColor);
+                        prepared = true;
+                    }
+                    box.classList.add('dragging');
+                }
+                box.style.left = (startLeft + dx) + 'px';
+                box.style.top = (startTop + dy) + 'px';
+            };
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                box.classList.remove('dragging');
+                if (!moved) return;
+                const left = parseFloat(box.style.left), top = parseFloat(box.style.top);
+                const [px, py] = editorViewport.convertToPdfPoint(left, top + r.height);
+                const data = {
+                    key: key, page: editorPage, _seq: ++editorSeq,
+                    x0: b.x0, y0: b.y0, x1: b.x1, y1: b.y1,
+                    newX: px, newY: py, width: b.x1 - b.x0, height: b.y1 - b.y0,
+                    htmlLeft: left, htmlTop: top, bgColor: bgColor || '#ffffff'
+                };
+                const ei = modifiedImages.findIndex(m => m.key === key);
+                if (ei !== -1) modifiedImages[ei] = data; else modifiedImages.push(data);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+        box.addEventListener('dblclick', () => {
+            const ei = modifiedImages.findIndex(m => m.key === key);
+            if (ei === -1) return;
+            modifiedImages.splice(ei, 1);
+            editorRenderPage();
+        });
+    });
 }
 
 function editorChangePage(dir) {
@@ -1871,12 +2074,15 @@ function maskOriginalPosition(index, originalItem, tx) {
     const mask = document.createElement('div');
     mask.className = 'original-mask';
     mask.setAttribute('data-index', index);
+    const _pm = modifiedTexts.find(m => m.key === `${editorPage}_${index}`);
+    mask.style.setProperty('--mask-bg', (_pm && _pm.bgColor) || sampleTextColors(originalItem).bg);
     const origWidth = originalItem.width * editorScale;
     const origHeight = originalItem.height * editorScale;
-    mask.style.left = `${tx[4] - 2}px`;
+    const _pad = Math.max(2, origHeight * 0.15);
+    mask.style.left = `${tx[4] - _pad}px`;
     mask.style.top = `${tx[5] - origHeight - 2}px`;
-    mask.style.width = `${origWidth + 6}px`;
-    mask.style.height = `${origHeight + 4}px`;
+    mask.style.width = `${origWidth + _pad * 2}px`;
+    mask.style.height = `${origHeight * 1.28 + 4}px`;
     textLayerDiv.appendChild(mask);
 }
 
@@ -1969,7 +2175,8 @@ function sampleTextColors(originalItem) {
 function savePositionAndText(span, originalItem, index) {
     const htmlLeft = parseFloat(span.style.left);
     const htmlTop = parseFloat(span.style.top);
-    const y_viewport = htmlTop + originalItem.height * editorScale;
+    const curSize = span._ptSize || originalItem.height;
+    const y_viewport = htmlTop + curSize * editorScale;
     const [pdfX, pdfY] = editorViewport.convertToPdfPoint(htmlLeft, y_viewport);
     const key = `${editorPage}_${index}`;
     const existingIndex = modifiedTexts.findIndex(item => item.key === key);
@@ -1982,7 +2189,7 @@ function savePositionAndText(span, originalItem, index) {
     } : sampleTextColors(originalItem);
     span.style.setProperty('--txt-color', cols.color);
     const changeData = {
-        key: key,
+        key: key, _seq: ++editorSeq,
         page: editorPage,
         color: cols.color,
         bgColor: cols.bg,
@@ -1994,7 +2201,7 @@ function savePositionAndText(span, originalItem, index) {
         origHeight: originalItem.height,
         x: pdfX,
         y: pdfY,
-        fontSize: originalItem.height,
+        fontSize: curSize,
         htmlLeft: htmlLeft,
         htmlTop: htmlTop,
         isBold: isBold,
@@ -2035,6 +2242,23 @@ function makeEditable(span, originalItem, index, tx) {
     colorPicker.addEventListener('input', onPick);
     colorPicker.addEventListener('change', onPickChange);
     colorPicker.addEventListener('blur', endPick);
+    const startSize = span._ptSize || originalItem.height;
+    let editSize = startSize;
+    const baselineVp = parseFloat(span.style.top) + startSize * editorScale;
+    const sizeInput = document.getElementById('editor-text-size');
+    sizeInput.value = String(Math.round(startSize * 10) / 10);
+    const onSize = () => {
+        const v = parseFloat(sizeInput.value);
+        if (!(v >= 4 && v <= 200)) return;
+        editSize = v;
+        input.style.fontSize = `${v * editorScale}px`;
+        input.style.top = `${baselineVp - v * editorScale}px`;
+    };
+    const onSizeKey = e => { if (e.key === 'Enter') { e.preventDefault(); input.focus(); saveChange(); } };
+    sizeInput.addEventListener('mousedown', onPickDown);
+    sizeInput.addEventListener('input', onSize);
+    sizeInput.addEventListener('keydown', onSizeKey);
+    sizeInput.addEventListener('blur', endPick);
     if (span.classList.contains('is-bold')) input.classList.add('is-bold');
     if (span.classList.contains('is-italic')) input.classList.add('is-italic');
     textLayerDiv.appendChild(input);
@@ -2061,18 +2285,25 @@ function makeEditable(span, originalItem, index, tx) {
         colorPicker.removeEventListener('input', onPick);
         colorPicker.removeEventListener('change', onPickChange);
         colorPicker.removeEventListener('blur', endPick);
+        sizeInput.removeEventListener('mousedown', onPickDown);
+        sizeInput.removeEventListener('input', onSize);
+        sizeInput.removeEventListener('keydown', onSizeKey);
+        sizeInput.removeEventListener('blur', endPick);
         const newText = input.value;
         span.textContent = newText;
         const isBold = input.classList.contains('is-bold');
         const isItalic = input.classList.contains('is-italic');
         input.remove();
         span.style.setProperty('--txt-color', editColor);
+        span._ptSize = editSize;
+        span.style.fontSize = `${editSize * editorScale}px`;
+        span.style.top = `${baselineVp - editSize * editorScale}px`;
         const _sampled = (modifiedTexts.find(m => m.key === `${editorPage}_${index}`) || {}).color ? null : sampleTextColors(originalItem);
         span.classList.add('modified');
         maskOriginalPosition(index, originalItem, tx);
         const htmlLeft = parseFloat(span.style.left);
         const htmlTop = parseFloat(span.style.top);
-        const y_viewport = htmlTop + originalItem.height * editorScale;
+        const y_viewport = baselineVp;
         const [pdfX, pdfY] = editorViewport.convertToPdfPoint(htmlLeft, y_viewport);
         const key = `${editorPage}_${index}`;
         const existingIndex = modifiedTexts.findIndex(item => item.key === key);
@@ -2082,7 +2313,7 @@ function makeEditable(span, originalItem, index, tx) {
             bg: prev.bgColor
         } : _sampled || sampleTextColors(originalItem);
         const changeData = {
-            key: key,
+            key: key, _seq: ++editorSeq,
             page: editorPage,
             color: editColor,
             bgColor: cols.bg,
@@ -2094,7 +2325,7 @@ function makeEditable(span, originalItem, index, tx) {
             origHeight: originalItem.height,
             x: pdfX,
             y: pdfY,
-            fontSize: originalItem.height,
+            fontSize: editSize,
             htmlLeft: htmlLeft,
             htmlTop: htmlTop,
             isBold: isBold,
@@ -2106,7 +2337,12 @@ function makeEditable(span, originalItem, index, tx) {
             modifiedTexts.push(changeData);
         }
     };
-    input.addEventListener('blur', () => { if (pickerBusy) return; saveChange(); });
+    input.addEventListener('blur', e => {
+        if (pickerBusy) return;
+        const rt = e.relatedTarget;
+        if (rt && (rt === colorPicker || rt === sizeInput)) return;
+        saveChange();
+    });
     input.addEventListener('keydown', e => {
         if (e.key === 'Enter') saveChange();
     });
@@ -2220,36 +2456,89 @@ async function editorExportPDF() {
             italicFont = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaOblique);
             boldItalicFont = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBoldOblique);
         }
+        const unsupportedChars = new Set();
+        let failedItems = 0;
+        const safeText = (text, font) => {
+            let set = null;
+            try { set = new Set(font.getCharacterSet()); } catch (e) {}
+            let out = '';
+            for (const ch of String(text).replace(/[\r\n\t]+/g, ' ')) {
+                if (!set || set.has(ch.codePointAt(0))) out += ch; else { unsupportedChars.add(ch); out += '?'; }
+            }
+            return out;
+        };
         modifiedTexts.forEach(change => {
-            const pageIndex = change.page - 1;
-            const pageObj = pages[pageIndex];
-            const descenderOffset = change.fontSize * .25;
-            pageObj.drawRectangle({
-                x: change.origX - 2,
-                y: change.origY - descenderOffset,
-                width: change.origWidth + 4,
-                height: change.fontSize + descenderOffset + 2,
-                color: (() => {
-                    const c = hexToRgb(change.bgColor || '#ffffff');
-                    return PDFLib.rgb(c.r, c.g, c.b);
-                })()
-            });
+            try {
+                const pageObj = pages[change.page - 1];
+                const h = change.origHeight || change.fontSize;
+                const pad = Math.max(2, h * 0.15);
+                const c = hexToRgb(change.bgColor || '#ffffff');
+                pageObj.drawRectangle({
+                    x: change.origX - pad,
+                    y: change.origY - h * 0.28,
+                    width: change.origWidth + pad * 2,
+                    height: h * 1.28 + 2,
+                    color: PDFLib.rgb(c.r, c.g, c.b)
+                });
+            } catch (e) { failedItems++; console.error('Lỗi che nền chữ cũ:', e); }
         });
+        let movedImgFailed = 0;
+        if (modifiedImages.length) {
+            const renderCache = {};
+            const SC = 3;
+            try {
+                modifiedImages.forEach(im => {
+                    try {
+                        const c = hexToRgb(im.bgColor || '#ffffff');
+                        pages[im.page - 1].drawRectangle({
+                            x: im.x0 - 1, y: im.y0 - 1, width: im.width + 2, height: im.height + 2,
+                            color: PDFLib.rgb(c.r, c.g, c.b)
+                        });
+                    } catch (e) { movedImgFailed++; console.error('Lỗi che ảnh cũ:', e); }
+                });
+                for (const im of modifiedImages) {
+                    try {
+                        if (!renderCache[im.page]) {
+                            const pg = await editorPdfJsDoc.getPage(im.page);
+                            const vp = pg.getViewport({ scale: SC });
+                            const cv = document.createElement('canvas');
+                            cv.width = Math.ceil(vp.width); cv.height = Math.ceil(vp.height);
+                            await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+                            renderCache[im.page] = { cv, vp };
+                        }
+                        const { cv, vp } = renderCache[im.page];
+                        const r = imgBoxViewportRect(vp, im);
+                        const x = Math.max(0, Math.floor(r.left)), y = Math.max(0, Math.floor(r.top));
+                        const w = Math.max(1, Math.min(cv.width - x, Math.ceil(r.width))), h = Math.max(1, Math.min(cv.height - y, Math.ceil(r.height)));
+                        const tmp = document.createElement('canvas');
+                        tmp.width = w; tmp.height = h;
+                        tmp.getContext('2d').drawImage(cv, x, y, w, h, 0, 0, w, h);
+                        const blob = await new Promise(res => tmp.toBlob(res, 'image/png'));
+                        const png = await pdfDoc.embedPng(await blob.arrayBuffer());
+                        pages[im.page - 1].drawImage(png, { x: im.newX, y: im.newY, width: im.width, height: im.height });
+                        tmp.width = 0;
+                    } catch (e) { movedImgFailed++; console.error('Lỗi vẽ ảnh ở vị trí mới:', e); }
+                }
+            } finally {
+                Object.values(renderCache).forEach(o => { o.cv.width = 0; });
+            }
+            failedItems += movedImgFailed;
+        }
         modifiedTexts.forEach(change => {
-            const pageIndex = change.page - 1;
-            const pageObj = pages[pageIndex];
-            let targetFont = regularFont;
-            if (change.isBold && change.isItalic) targetFont = boldItalicFont; else if (change.isBold) targetFont = boldFont; else if (change.isItalic) targetFont = italicFont;
-            pageObj.drawText(usingStdFont ? removeVietnameseTones(change.text) : change.text, {
-                x: change.x,
-                y: change.y,
-                size: change.fontSize,
-                font: targetFont,
-                color: (() => {
-                    const c = hexToRgb(change.color || '#000000');
-                    return PDFLib.rgb(c.r, c.g, c.b);
-                })()
-            });
+            try {
+                const pageObj = pages[change.page - 1];
+                let targetFont = regularFont;
+                if (change.isBold && change.isItalic) targetFont = boldItalicFont; else if (change.isBold) targetFont = boldFont; else if (change.isItalic) targetFont = italicFont;
+                const rawText = usingStdFont ? removeVietnameseTones(change.text) : change.text;
+                const c = hexToRgb(change.color || '#000000');
+                pageObj.drawText(safeText(rawText, targetFont), {
+                    x: change.x,
+                    y: change.y,
+                    size: change.fontSize,
+                    font: targetFont,
+                    color: PDFLib.rgb(c.r, c.g, c.b)
+                });
+            } catch (e) { failedItems++; console.error('Lỗi vẽ chữ mới:', e); }
         });
         editorShapes.forEach(shape => {
             const pageObj = pages[shape.page - 1];
@@ -2355,6 +2644,11 @@ async function editorExportPDF() {
         const finalFileName = editorFileName ? `${editorFileName}_edit.pdf` : 'tai_lieu_chinh_sua.pdf';
         link.download = finalFileName;
         link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+        const notes = [];
+        if (unsupportedChars.size) notes.push('Các ký tự font không hỗ trợ đã được thay bằng "?": ' + Array.from(unsupportedChars).join(' '));
+        if (failedItems) notes.push(failedItems + ' mục chữ không vẽ được (xem Console F12).');
+        if (notes.length) setTimeout(() => alert('Đã xuất PDF, nhưng lưu ý:\n' + notes.join('\n')), 300);
     } catch (error) {
         console.error(error);
         alert('Lỗi xuất file: ' + error.message);
@@ -2391,13 +2685,29 @@ async function renderEditorPageImage(pageNum) {
         canvasContext: ctx,
         viewport: vp
     }).promise;
+    const _movedImgs = modifiedImages.filter(m => m.page === pageNum).map(m => {
+        const r0 = imgBoxViewportRect(vp, m);
+        const [nx0, ny0] = vp.convertToViewportPoint(m.newX, m.newY);
+        const t = document.createElement('canvas');
+        t.width = Math.max(1, Math.ceil(r0.width));
+        t.height = Math.max(1, Math.ceil(r0.height));
+        t.getContext('2d').drawImage(cv, Math.floor(r0.left), Math.floor(r0.top), t.width, t.height, 0, 0, t.width, t.height);
+        return { m, r0, crop: t, nx: nx0, ny: ny0 - r0.height };
+    });
+    _movedImgs.forEach(o => {
+        ctx.fillStyle = o.m.bgColor || '#ffffff';
+        ctx.fillRect(o.r0.left - 1, o.r0.top - 1, o.r0.width + 2, o.r0.height + 2);
+    });
+    _movedImgs.forEach(o => { ctx.drawImage(o.crop, o.nx, o.ny, o.r0.width, o.r0.height); });
     modifiedTexts.filter(t => t.page === pageNum).forEach(t => {
         const [ox, oy] = vp.convertToViewportPoint(t.origX, t.origY);
         const [nx, ny] = vp.convertToViewportPoint(t.x ?? t.origX, t.y ?? t.origY);
         const h = t.fontSize * editorScale;
         const w = (t.origWidth || 0) * editorScale;
         ctx.fillStyle = t.bgColor || '#ffffff';
-        ctx.fillRect(ox - 3, oy - h - 2, w + 6, h + 6);
+        const mh = (t.origHeight || t.fontSize) * editorScale;
+        const mp = Math.max(3, mh * 0.15);
+        ctx.fillRect(ox - mp, oy - mh - 2, w + mp * 2, mh * 1.28 + 6);
         ctx.font = `${t.isItalic ? 'italic ' : ''}${t.isBold ? 'bold ' : ''}${h}px Arial`;
         ctx.fillStyle = t.color || '#000000';
         ctx.textBaseline = 'alphabetic';
