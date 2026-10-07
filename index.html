@@ -199,6 +199,9 @@ function getEmbeddedFont(style) {
         .editor-img-box:hover { outline: 1px dashed var(--primary); background-color: rgba(0, 90, 158, 0.08); }
         .editor-img-box.modified { outline: 1px solid rgba(0, 90, 158, 0.3); }
         .editor-img-box.dragging { opacity: 0.85; box-shadow: 0 4px 12px rgba(0,0,0,0.25); z-index: 100; }
+        .editor-text-layer.add-mode { cursor: text; }
+        .editor-text-layer span.added-text { cursor: move; white-space: pre; outline: 1px dashed rgba(0, 90, 158, 0.45); padding: 0 1px; }
+        .editor-text-layer.add-mode span.added-text { cursor: text; }
         .editor-text-layer span:hover {
             background-color: rgba(0, 90, 158, 0.1) !important;
             outline: 1px dashed var(--primary);
@@ -236,7 +239,7 @@ function getEmbeddedFont(style) {
         .editor-text-layer span.is-italic { font-style: italic !important; }
         .editing-input.is-bold { font-weight: bold !important; }
         .editing-input.is-italic { font-style: italic !important; }
-        .editor-pagebar { display:flex; align-items:center; justify-content:center; gap:10px; padding:8px; background:white; border-top:1px solid #d2d0ce; }
+        .editor-pagebar { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:10px; padding:8px; background:white; border-top:1px solid #d2d0ce; }
         .editor-pagebar button { width:auto; margin:0; }
         .editor-hint { font-size:11px; color:#605e5c; line-height:1.45; margin:6px 0 0; }
         
@@ -562,6 +565,7 @@ function getEmbeddedFont(style) {
                     <p class="card-title">🎨 CÔNG CỤ VẼ & SỬA</p>
                     <div class="draw-tools-grid">
                         <button class="btn btn-small btn-tool active" id="tool-text" onclick="setEditorTool('text')">🔤 Chọn Chữ</button>
+                        <button class="btn btn-small btn-tool" id="tool-addtext" onclick="setEditorTool('addtext')">🅣 Thêm Chữ</button>
                         <button class="btn btn-small btn-tool" id="tool-free" onclick="setEditorTool('free')">✏️ Vẽ Tự Do</button>
                         <button class="btn btn-small btn-tool" id="tool-line" onclick="setEditorTool('line')">📏 Đường Thẳng</button>
                         <button class="btn btn-small btn-tool" id="tool-rect" onclick="setEditorTool('rect')">⬜ Hình Vuông</button>
@@ -581,6 +585,7 @@ function getEmbeddedFont(style) {
                         <label style="font-size:11px; font-weight:600; color:#555;">Cỡ chữ (pt):</label>
                         <input type="number" id="editor-text-size" min="4" max="200" step="0.5" value="12">
                     </div>
+                    <div class="editor-hint" id="editor-img-status" style="margin:2px 0 6px;"></div>
                     <div class="brush-status" id="brush-size-status">Độ dày nét: 3px (Cuộn chuột để thay đổi)</div>
                 </div>
 
@@ -591,8 +596,12 @@ function getEmbeddedFont(style) {
                         - Click đúp chữ để sửa.<br>
                         - Nhấn <b>Ctrl + B</b> để in đậm chữ.<br>
                         - Nhấn <b>Ctrl + I</b> để in nghiêng chữ.<br>
-                        • <b>Hoàn Tác (Undo):</b><br>
-                        - Nhấn <b>Ctrl + Z</b> để xóa hình vẽ lỗi gần nhất, hoặc hoàn tác chữ vừa di chuyển/chỉnh sửa.<br>
+                        • <b>Thêm chữ mới:</b><br>
+                        - Chọn <b>🅣 Thêm Chữ</b>, click vào trang, gõ chữ rồi nhấn <b>Enter</b> (dùng màu & cỡ chữ đang chọn bên trên).<br>
+                        - Click đúp để sửa, kéo để dời; xóa hết chữ để bỏ.<br>
+                        • <b>Hoàn tác / Làm lại:</b><br>
+                        - <b>Ctrl + Z</b> hoàn tác từng thao tác (chữ, ảnh, hình vẽ); <b>Ctrl + Y</b> (hoặc Ctrl + Shift + Z) làm lại.<br>
+                        • <b>Phóng to / thu nhỏ:</b> nút ➖ ➕ ở thanh dưới hoặc <b>Ctrl + cuộn chuột</b>.<br>
                         • <b>Giữ Shift</b> khi kéo: hình vuông/tròn đều, đường thẳng/mũi tên theo góc 45°.<br>
                         • <b>Cọ Vẽ:</b> Cuộn chuột trên trang để tăng/giảm nét vẽ nhanh chóng.
                     </p>
@@ -601,6 +610,7 @@ function getEmbeddedFont(style) {
                 <div class="card" style="margin-top:auto">
                     <p class="card-title">2. Xuất PDF</p>
                     <button class="btn btn-success" id="editor-download-btn" onclick="editorExportPDF()" disabled>💾 XUẤT FILE ĐÃ SỬA</button>
+                    <div class="editor-hint" style="text-align:center; margin-top:4px;">Phiên bản: v5 · 07/10/2026</div>
                 </div>
             </div>
 
@@ -609,6 +619,12 @@ function getEmbeddedFont(style) {
                     <button class="btn btn-small" onclick="editorChangePage(-1)">◀ Trước</button>
                     <span id="editor-page-indicator" style="font-weight:bold">0 / 0</span>
                     <button class="btn btn-small" onclick="editorChangePage(1)">Sau ▶</button>
+                    <button class="btn btn-small btn-tool" id="editor-undo-btn" onclick="editorUndo()" title="Ctrl + Z" disabled>↩ Hoàn tác</button>
+                    <button class="btn btn-small btn-tool" id="editor-redo-btn" onclick="editorRedo()" title="Ctrl + Y" disabled>↪ Làm lại</button>
+                    <button class="btn btn-small btn-tool" onclick="editorZoomBy(-1)" title="Thu nhỏ">➖</button>
+                    <span id="editor-zoom-label" style="font-weight:bold; min-width:44px; text-align:center;">100%</span>
+                    <button class="btn btn-small btn-tool" onclick="editorZoomBy(1)" title="Phóng to">➕</button>
+                    <button class="btn btn-small btn-tool" onclick="editorZoomFit()" title="Vừa chiều ngang khung">↔ Vừa khung</button>
                     <button class="btn btn-small btn-warning" onclick="printEditorStage()" style="margin-left: 15px;">🖨️ IN TRANG NÀY</button>
 					<button class="btn btn-small btn-success" onclick="printAllEditorPages()">📚 IN TOÀN BỘ</button>
                 </div>
@@ -1575,11 +1591,12 @@ function setEditorTool(toolName) {
     document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active'));
     document.getElementById(`tool-${toolName}`).classList.add('active');
     const textLayer = document.getElementById('editor-text-layer');
-    if (toolName === 'text') {
+    if (toolName === 'text' || toolName === 'addtext') {
         textLayer.classList.remove('drawing-active');
     } else {
         textLayer.classList.add('drawing-active');
     }
+    textLayer.classList.toggle('add-mode', toolName === 'addtext');
     const dc = document.getElementById('editor-draw-canvas');
     if (dc) dc.style.cursor = toolName === 'text' ? 'default' : 'crosshair';
     updateBrushPreview();
@@ -1621,24 +1638,13 @@ document.addEventListener('keydown', function(e) {
     if (!isEditorActive) return;
     const t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+    const _k = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && _k === 'z' && !e.shiftKey) {
         e.preventDefault();
-        if (editorCurrentTool !== 'text') {
-            if (editorShapes.length > 0) {
-                editorShapes.pop();
-                redrawPageShapes();
-            }
-        } else {
-            const _lt = modifiedTexts.length ? (modifiedTexts[modifiedTexts.length - 1]._seq || 0) : -1;
-            const _li = modifiedImages.length ? (modifiedImages[modifiedImages.length - 1]._seq || 0) : -1;
-            if (_li > _lt) {
-                modifiedImages.pop();
-                editorRenderPage();
-            } else if (modifiedTexts.length > 0) {
-                modifiedTexts.pop();
-                editorRenderPage();
-            }
-        }
+        editorUndo();
+    } else if ((e.ctrlKey || e.metaKey) && (_k === 'y' || (_k === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        editorRedo();
     }
 });
 
@@ -1658,7 +1664,7 @@ function initDrawCanvasEvents() {
     const dCanvas = document.getElementById('editor-draw-canvas');
     const ctx = dCanvas.getContext('2d');
     dCanvas.addEventListener('wheel', e => {
-        if (editorCurrentTool === 'text') return;
+        if (editorCurrentTool === 'text' || editorCurrentTool === 'addtext' || e.ctrlKey || e.metaKey) return;
         e.preventDefault();
         if (e.deltaY < 0) {
             brushSize = Math.min(50, brushSize + 1);
@@ -1671,7 +1677,7 @@ function initDrawCanvasEvents() {
         passive: false
     });
     dCanvas.addEventListener('pointerdown', e => {
-        if (editorCurrentTool === 'text') return;
+        if (editorCurrentTool === 'text' || editorCurrentTool === 'addtext') return;
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         isDrawingShape = true;
         try {
@@ -1737,7 +1743,7 @@ function initDrawCanvasEvents() {
             const sh = currentDrawShape;
             currentDrawShape = null;
             const tooSmall = sh.type === 'free' ? sh.points.length < 2 : Math.hypot(sh.endX - sh.startX, sh.endY - sh.startY) < 3;
-            if (!tooSmall) editorShapes.push(sh);
+            if (!tooSmall) { editorShapes.push(sh); recordHistory(); }
             redrawPageShapes();
         }
     });
@@ -1808,7 +1814,10 @@ async function editorLoadFile(input) {
         modifiedTexts = [];
         modifiedImages = [];
         editorShapes = [];
+        addedTexts = [];
         editorPage = 1;
+        resetHistory();
+        updateZoomLabel();
         try {
             editorPdfJsDoc = await pdfjsLib.getDocument({
                 data: new Uint8Array(editorPdfDataBytes.slice(0))
@@ -1827,7 +1836,7 @@ async function editorLoadFile(input) {
     reader.readAsArrayBuffer(file);
 }
 
-async function editorRenderPage() {
+async function _editorRenderPageImpl() {
     if (!editorPdfJsDoc) return;
     const page = await editorPdfJsDoc.getPage(editorPage);
     editorViewport = page.getViewport({
@@ -1866,8 +1875,12 @@ async function editorRenderPage() {
         const savedChange = modifiedTexts.find(m => m.key === key);
         if (savedChange) {
             span.textContent = savedChange.text;
-            span.style.left = `${savedChange.htmlLeft}px`;
-            span.style.top = `${savedChange.htmlTop}px`;
+            {
+                const [_hx, _hy] = editorViewport.convertToViewportPoint(savedChange.x, savedChange.y);
+                const _fs = savedChange.fontSize || item.height;
+                span.style.left = `${_hx}px`;
+                span.style.top = `${_hy - _fs * editorScale}px`;
+            }
             span.classList.add('modified');
             span.style.setProperty('--txt-color', savedChange.color || '#000000');
             if (savedChange.fontSize) {
@@ -1881,10 +1894,12 @@ async function editorRenderPage() {
         enableDragAndEdit(span, item, index, tx);
         textLayerDiv.appendChild(span);
     });
+    buildAddedTexts(textLayerDiv);
     try {
         await buildImageBoxes(page, textLayerDiv, canvas);
     } catch (e) {
         console.warn('Không dò được ảnh trong trang:', e);
+        setImgStatus('⚠ Không dò được ảnh trên trang này: ' + (e && e.message ? e.message : e));
     }
     redrawPageShapes();
 }
@@ -1971,9 +1986,18 @@ function cropCanvasToDataURL(cv, r) {
     return tmp.toDataURL('image/png');
 }
 
+function setImgStatus(msg) {
+    const el = document.getElementById('editor-img-status');
+    if (el) el.textContent = msg;
+}
+
 async function buildImageBoxes(page, textLayerDiv, pdfCanvas) {
-    if (page.rotate && page.rotate % 360 !== 0) return;
+    if (page.rotate && page.rotate % 360 !== 0) {
+        setImgStatus('🖼 Trang này bị xoay nên chưa hỗ trợ kéo ảnh.');
+        return;
+    }
     const images = await detectPageImages(page);
+    setImgStatus(images.length ? `🖼 Trang này có ${images.length} ảnh kéo được (rê chuột vào ảnh, kéo để dời).` : '🖼 Không thấy ảnh nào kéo được trên trang này (ảnh quá nhỏ, phủ gần kín trang, hoặc là hình vector).');
     images.forEach((b, idx) => {
         const key = `${editorPage}_img${idx}`;
         const r = imgBoxViewportRect(editorViewport, b);
@@ -2001,8 +2025,11 @@ async function buildImageBoxes(page, textLayerDiv, pdfCanvas) {
             box.classList.add('modified');
         };
         if (saved) {
-            box.style.left = saved.htmlLeft + 'px';
-            box.style.top = saved.htmlTop + 'px';
+            {
+                const [_bx, _by] = editorViewport.convertToViewportPoint(saved.newX, saved.newY);
+                box.style.left = _bx + 'px';
+                box.style.top = (_by - r.height) + 'px';
+            }
             showCrop();
             addMask(saved.bgColor);
         }
@@ -2046,6 +2073,7 @@ async function buildImageBoxes(page, textLayerDiv, pdfCanvas) {
                 };
                 const ei = modifiedImages.findIndex(m => m.key === key);
                 if (ei !== -1) modifiedImages[ei] = data; else modifiedImages.push(data);
+                recordHistory();
             };
             document.addEventListener('mousemove', onMove);
             document.addEventListener('mouseup', onUp);
@@ -2054,10 +2082,388 @@ async function buildImageBoxes(page, textLayerDiv, pdfCanvas) {
             const ei = modifiedImages.findIndex(m => m.key === key);
             if (ei === -1) return;
             modifiedImages.splice(ei, 1);
+            recordHistory();
             editorRenderPage();
         });
     });
 }
+
+// ===================== Roboto cho bản xem trước (khớp với bản xuất PDF) =====================
+(function loadPreviewFonts() {
+    try {
+        [ [ 'regular', 'normal', '400' ], [ 'bold', 'normal', '700' ], [ 'italic', 'italic', '400' ], [ 'bolditalic', 'italic', '700' ] ].forEach(([k, st, w]) => {
+            const u = getEmbeddedFont(k);
+            if (!u) return;
+            const ff = new FontFace('RobotoEmb', u.buffer, { style: st, weight: w });
+            ff.load().then(f => { document.fonts.add(f); }).catch(() => {});
+        });
+    } catch (e) {}
+})();
+
+// ===================== Vẽ lại trang: xếp hàng, tránh chạy chồng =====================
+let _renderBusy = false, _renderPending = false;
+async function editorRenderPage() {
+    if (_renderBusy) { _renderPending = true; return; }
+    _renderBusy = true;
+    try {
+        do {
+            _renderPending = false;
+            await _editorRenderPageImpl();
+        } while (_renderPending);
+    } finally {
+        _renderBusy = false;
+    }
+}
+
+// ===================== Chữ thêm mới =====================
+let addedTexts = [];
+let addedIdSeq = 0;
+const ADDED_K = 0.842;
+const INPUT_K = 0.928;
+const ADDED_FONT = "'RobotoEmb', Roboto, Arial, sans-serif";
+const _measureCtx = document.createElement('canvas').getContext('2d');
+
+function buildAddedTexts(layer) {
+    layer.querySelectorAll('.added-text').forEach(n => n.remove());
+    addedTexts.filter(a => a.page === editorPage).forEach(a => {
+        const span = document.createElement('span');
+        span.className = 'added-text modified';
+        if (a.isBold) span.classList.add('is-bold');
+        if (a.isItalic) span.classList.add('is-italic');
+        span.textContent = a.text;
+        span.style.fontFamily = ADDED_FONT;
+        span.style.lineHeight = '1';
+        span.style.fontSize = `${a.fontSize * editorScale}px`;
+        span.style.setProperty('--txt-color', a.color);
+        const [vx, vy] = editorViewport.convertToViewportPoint(a.x, a.y);
+        span.style.left = `${vx}px`;
+        span.style.top = `${vy - ADDED_K * a.fontSize * editorScale}px`;
+        span.setAttribute('data-added-id', a.id);
+        bindAddedTextEvents(span, a.id);
+        layer.appendChild(span);
+    });
+}
+
+function bindAddedTextEvents(span, id) {
+    let moved = false;
+    span.addEventListener('mousedown', e => {
+        if (e.button !== 0 || editorCurrentTool !== 'text') return;
+        if (document.querySelector('#editor-text-layer .editing-input')) return;
+        moved = false;
+        const startX = e.clientX, startY = e.clientY;
+        const startLeft = parseFloat(span.style.left), startTop = parseFloat(span.style.top);
+        document.body.style.userSelect = 'none';
+        const onMove = ev => {
+            const dx = ev.clientX - startX, dy = ev.clientY - startY;
+            if (!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+            moved = true;
+            span.classList.add('dragging');
+            span.style.left = (startLeft + dx) + 'px';
+            span.style.top = (startTop + dy) + 'px';
+        };
+        const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            document.body.style.userSelect = '';
+            span.classList.remove('dragging');
+            if (!moved) return;
+            const a = addedTexts.find(t => t.id === id);
+            if (!a) return;
+            const [px, py] = editorViewport.convertToPdfPoint(parseFloat(span.style.left), parseFloat(span.style.top) + ADDED_K * a.fontSize * editorScale);
+            a.x = px;
+            a.y = py;
+            recordHistory();
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+    span.addEventListener('dblclick', () => {
+        if (editorCurrentTool === 'text') openAddedTextEditor(addedTexts.find(t => t.id === id));
+    });
+    span.addEventListener('click', () => {
+        if (editorCurrentTool === 'addtext') openAddedTextEditor(addedTexts.find(t => t.id === id));
+    });
+}
+
+function openAddedTextEditor(entry, pos) {
+    const layer = document.getElementById('editor-text-layer');
+    if (layer.querySelector('.editing-input')) return;
+    const colorPicker = document.getElementById('editor-text-color');
+    const sizeInput = document.getElementById('editor-text-size');
+    let size, color, bold, italic, text, left, baseline;
+    if (entry) {
+        size = entry.fontSize; color = entry.color; bold = !!entry.isBold; italic = !!entry.isItalic; text = entry.text;
+        const [vx, vy] = editorViewport.convertToViewportPoint(entry.x, entry.y);
+        left = vx; baseline = vy;
+    } else {
+        size = parseFloat(sizeInput.value);
+        if (!(size >= 4 && size <= 200)) size = 12;
+        color = colorPicker.value || '#000000';
+        bold = false; italic = false; text = '';
+        left = pos.x;
+        baseline = pos.y + ADDED_K * size * editorScale;
+    }
+    colorPicker.value = color;
+    sizeInput.value = String(Math.round(size * 10) / 10);
+    if (entry) {
+        const sp = layer.querySelector(`.added-text[data-added-id="${entry.id}"]`);
+        if (sp) sp.style.visibility = 'hidden';
+    }
+    const input = document.createElement('input');
+    input.className = 'editing-input';
+    input.setAttribute('data-added', '1');
+    input.value = text;
+    input.placeholder = 'Gõ chữ...';
+    input.style.fontFamily = ADDED_FONT;
+    input.style.left = `${left - 1}px`;
+    input.style.setProperty('--txt-color', color);
+    if (bold) input.classList.add('is-bold');
+    if (italic) input.classList.add('is-italic');
+    const anchorTop = entry ? null : pos.y;
+    const applySize = () => {
+        if (anchorTop !== null) baseline = anchorTop + ADDED_K * size * editorScale;
+        input.style.fontSize = `${size * editorScale}px`;
+        input.style.top = `${baseline - INPUT_K * size * editorScale}px`;
+        _measureCtx.font = `${italic ? 'italic ' : ''}${bold ? 'bold ' : ''}${size * editorScale}px ${ADDED_FONT}`;
+        const w = _measureCtx.measureText(input.value || ' ').width;
+        input.style.width = `${Math.max(120, Math.ceil(w) + 30)}px`;
+    };
+    applySize();
+    layer.appendChild(input);
+    input.focus();
+    let done = false, pickerBusy = false;
+    const onPickDown = () => { pickerBusy = true; };
+    const endPick = () => { setTimeout(() => { pickerBusy = false; if (input.isConnected) input.focus(); }, 0); };
+    const onColor = () => { color = colorPicker.value; input.style.setProperty('--txt-color', color); };
+    const onColorChange = () => { onColor(); endPick(); };
+    const onSize = () => {
+        const v = parseFloat(sizeInput.value);
+        if (!(v >= 4 && v <= 200)) return;
+        size = v;
+        applySize();
+    };
+    const onSizeKey = e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } };
+    colorPicker.addEventListener('mousedown', onPickDown);
+    colorPicker.addEventListener('input', onColor);
+    colorPicker.addEventListener('change', onColorChange);
+    colorPicker.addEventListener('blur', endPick);
+    sizeInput.addEventListener('mousedown', onPickDown);
+    sizeInput.addEventListener('input', onSize);
+    sizeInput.addEventListener('keydown', onSizeKey);
+    sizeInput.addEventListener('blur', endPick);
+    const cleanup = () => {
+        colorPicker.removeEventListener('mousedown', onPickDown);
+        colorPicker.removeEventListener('input', onColor);
+        colorPicker.removeEventListener('change', onColorChange);
+        colorPicker.removeEventListener('blur', endPick);
+        sizeInput.removeEventListener('mousedown', onPickDown);
+        sizeInput.removeEventListener('input', onSize);
+        sizeInput.removeEventListener('keydown', onSizeKey);
+        sizeInput.removeEventListener('blur', endPick);
+    };
+    const commit = () => {
+        if (done) return;
+        done = true;
+        cleanup();
+        const t = input.value;
+        input.remove();
+        if (entry) {
+            const e = addedTexts.find(a => a.id === entry.id);
+            if (e) {
+                if (!t.trim()) {
+                    addedTexts = addedTexts.filter(a => a.id !== e.id);
+                } else {
+                    e.text = t; e.fontSize = size; e.color = color; e.isBold = bold; e.isItalic = italic;
+                }
+            }
+        } else if (t.trim()) {
+            const [px, py] = editorViewport.convertToPdfPoint(left, baseline);
+            addedTexts.push({ id: 'a' + (++addedIdSeq), page: editorPage, text: t, x: px, y: py, fontSize: size, color: color, isBold: bold, isItalic: italic });
+        }
+        buildAddedTexts(layer);
+        recordHistory();
+    };
+    const cancel = () => {
+        if (done) return;
+        done = true;
+        cleanup();
+        input.remove();
+        buildAddedTexts(layer);
+    };
+    input.addEventListener('input', applySize);
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); commit(); return; }
+        if (e.key === 'Escape') { e.preventDefault(); cancel(); return; }
+        if (!(e.ctrlKey || e.metaKey)) return;
+        const k = e.key.toLowerCase();
+        if (k === 'b') { e.preventDefault(); bold = !bold; input.classList.toggle('is-bold', bold); applySize(); }
+        if (k === 'i') { e.preventDefault(); italic = !italic; input.classList.toggle('is-italic', italic); applySize(); }
+    });
+    input.addEventListener('blur', e => {
+        if (pickerBusy) return;
+        const rt = e.relatedTarget;
+        if (rt && (rt === colorPicker || rt === sizeInput)) return;
+        commit();
+    });
+}
+
+(function bindAddTextClick() {
+    const layer = document.getElementById('editor-text-layer');
+    if (!layer) return;
+    layer.addEventListener('mousedown', e => {
+        if (editorCurrentTool !== 'addtext' || e.button !== 0) return;
+        if (!(e.target === layer || e.target.classList.contains('editor-img-box'))) return;
+        const rect = layer.getBoundingClientRect();
+        const k = rect.width ? layer.offsetWidth / rect.width : 1;
+        const pos = { x: (e.clientX - rect.left) * k, y: (e.clientY - rect.top) * k };
+        if (layer.querySelector('.editing-input')) {
+            setTimeout(() => openAddedTextEditor(null, pos), 0);
+        } else {
+            e.preventDefault();
+            openAddedTextEditor(null, pos);
+        }
+    });
+})();
+
+// ===================== Lịch sử: Hoàn tác / Làm lại =====================
+let editorHistStack = [];
+let editorHistIndex = -1;
+let editorHistRestoring = false;
+
+function cloneShape(sh) {
+    return Object.assign({}, sh, sh.points ? { points: sh.points.map(p => ({ x: p.x, y: p.y })) } : {});
+}
+
+function rescaleShape(sh, from, to) {
+    if (!(from > 0) || Math.abs(from - to) < 1e-9) return sh;
+    const r = to / from;
+    [ 'startX', 'startY', 'endX', 'endY', 'size' ].forEach(k => { if (typeof sh[k] === 'number') sh[k] *= r; });
+    if (sh.points) sh.points.forEach(p => { p.x *= r; p.y *= r; });
+    if (sh.vp && typeof sh.vp.clone === 'function') sh.vp = sh.vp.clone({ scale: to });
+    return sh;
+}
+
+function snapshotState() {
+    const sn = {
+        scale: editorScale,
+        page: editorPage,
+        t: modifiedTexts.map(o => Object.assign({}, o)),
+        i: modifiedImages.map(o => Object.assign({}, o)),
+        a: addedTexts.map(o => Object.assign({}, o)),
+        s: editorShapes.map(cloneShape)
+    };
+    sn.sig = JSON.stringify([ sn.t, sn.i, sn.a, sn.s.map(o => { const c = Object.assign({}, o); delete c.vp; return c; }) ]);
+    return sn;
+}
+
+function recordHistory() {
+    if (editorHistRestoring) return;
+    const sn = snapshotState();
+    editorHistStack.length = editorHistIndex + 1;
+    if (editorHistIndex >= 0 && editorHistStack[editorHistIndex].sig === sn.sig) { updateHistoryButtons(); return; }
+    editorHistStack.push(sn);
+    if (editorHistStack.length > 100) editorHistStack.shift();
+    editorHistIndex = editorHistStack.length - 1;
+    updateHistoryButtons();
+}
+
+function resetHistory() {
+    editorHistStack = [];
+    editorHistIndex = -1;
+    recordHistory();
+}
+
+function updateHistoryButtons() {
+    const u = document.getElementById('editor-undo-btn'), r = document.getElementById('editor-redo-btn');
+    if (u) u.disabled = !(editorHistIndex > 0);
+    if (r) r.disabled = !(editorHistIndex < editorHistStack.length - 1);
+}
+
+function restoreSnapshot(sn, goPage) {
+    editorHistRestoring = true;
+    try {
+        modifiedTexts = sn.t.map(o => Object.assign({}, o));
+        modifiedImages = sn.i.map(o => Object.assign({}, o));
+        addedTexts = sn.a.map(o => Object.assign({}, o));
+        editorShapes = sn.s.map(o => rescaleShape(cloneShape(o), sn.scale, editorScale));
+        if (goPage && editorPdfJsDoc && goPage >= 1 && goPage <= editorPdfJsDoc.numPages) editorPage = goPage;
+    } finally {
+        editorHistRestoring = false;
+    }
+    updateHistoryButtons();
+    editorRenderPage();
+}
+
+function editorUndo() {
+    if (!editorPdfJsDoc || editorHistIndex <= 0) return;
+    const leaving = editorHistStack[editorHistIndex];
+    editorHistIndex--;
+    restoreSnapshot(editorHistStack[editorHistIndex], leaving.page);
+}
+
+function editorRedo() {
+    if (!editorPdfJsDoc || editorHistIndex >= editorHistStack.length - 1) return;
+    editorHistIndex++;
+    restoreSnapshot(editorHistStack[editorHistIndex], editorHistStack[editorHistIndex].page);
+}
+
+// ===================== Phóng to / thu nhỏ =====================
+const ZOOM_STEPS = [ 30, 50, 75, 100, 125, 150, 200, 250 ];
+const ZOOM_BASE = 1.5;
+
+function updateZoomLabel() {
+    const el = document.getElementById('editor-zoom-label');
+    if (el) el.textContent = Math.round(editorScale / ZOOM_BASE * 100) + '%';
+}
+
+async function setEditorZoom(newScale) {
+    if (!editorPdfJsDoc) return;
+    newScale = Math.min(ZOOM_BASE * 2.5, Math.max(ZOOM_BASE * 0.3, Math.round(newScale * 1000) / 1000));
+    if (Math.abs(newScale - editorScale) < 0.001) return;
+    const old = editorScale;
+    editorShapes.forEach(sh => rescaleShape(sh, old, newScale));
+    const sc = document.querySelector('.editor-stage-scroll');
+    const fx = sc && sc.scrollWidth ? (sc.scrollLeft + sc.clientWidth / 2) / sc.scrollWidth : 0.5;
+    const fy = sc && sc.scrollHeight ? (sc.scrollTop + sc.clientHeight / 2) / sc.scrollHeight : 0;
+    editorScale = newScale;
+    updateZoomLabel();
+    await editorRenderPage();
+    if (sc) {
+        sc.scrollLeft = fx * sc.scrollWidth - sc.clientWidth / 2;
+        sc.scrollTop = fy * sc.scrollHeight - sc.clientHeight / 2;
+    }
+}
+
+function editorZoomBy(dir) {
+    const cur = Math.round(editorScale / ZOOM_BASE * 100);
+    let target = cur;
+    if (dir > 0) {
+        target = ZOOM_STEPS.find(p => p > cur + 1) || ZOOM_STEPS[ZOOM_STEPS.length - 1];
+    } else {
+        for (let i = ZOOM_STEPS.length - 1; i >= 0; i--) { if (ZOOM_STEPS[i] < cur - 1) { target = ZOOM_STEPS[i]; break; } }
+        if (target === cur) target = ZOOM_STEPS[0];
+    }
+    setEditorZoom(target / 100 * ZOOM_BASE);
+}
+
+function editorZoomFit() {
+    if (!editorPdfJsDoc || !editorViewport) return;
+    const sc = document.querySelector('.editor-stage-scroll');
+    const baseWidth = editorViewport.width / editorScale;
+    const avail = sc.clientWidth - 56;
+    if (avail > 100 && baseWidth > 0) setEditorZoom(avail / baseWidth);
+}
+
+(function bindZoomWheel() {
+    const sc = document.querySelector('.editor-stage-scroll');
+    if (!sc) return;
+    sc.addEventListener('wheel', e => {
+        if (!(e.ctrlKey || e.metaKey) || !editorPdfJsDoc) return;
+        e.preventDefault();
+        setEditorZoom(editorScale * (e.deltaY < 0 ? 1.1 : 1 / 1.1));
+    }, { passive: false });
+})();
+
 
 function editorChangePage(dir) {
     if (!editorPdfJsDoc) return;
@@ -2213,6 +2619,7 @@ function savePositionAndText(span, originalItem, index) {
     } else {
         modifiedTexts.push(changeData);
     }
+    recordHistory();
 }
 
 function makeEditable(span, originalItem, index, tx) {
@@ -2336,6 +2743,7 @@ function makeEditable(span, originalItem, index, tx) {
         } else {
             modifiedTexts.push(changeData);
         }
+        recordHistory();
     };
     input.addEventListener('blur', e => {
         if (pickerBusy) return;
@@ -2540,6 +2948,16 @@ async function editorExportPDF() {
                 });
             } catch (e) { failedItems++; console.error('Lỗi vẽ chữ mới:', e); }
         });
+        addedTexts.forEach(a => {
+            try {
+                const pageObj = pages[a.page - 1];
+                let f = regularFont;
+                if (a.isBold && a.isItalic) f = boldItalicFont; else if (a.isBold) f = boldFont; else if (a.isItalic) f = italicFont;
+                const c = hexToRgb(a.color || '#000000');
+                const raw = usingStdFont ? removeVietnameseTones(a.text) : a.text;
+                pageObj.drawText(safeText(raw, f), { x: a.x, y: a.y, size: a.fontSize, font: f, color: PDFLib.rgb(c.r, c.g, c.b) });
+            } catch (e) { failedItems++; console.error('Lỗi vẽ chữ thêm mới:', e); }
+        });
         editorShapes.forEach(shape => {
             const pageObj = pages[shape.page - 1];
             const rgb = hexToRgb(shape.color);
@@ -2708,10 +3126,17 @@ async function renderEditorPageImage(pageNum) {
         const mh = (t.origHeight || t.fontSize) * editorScale;
         const mp = Math.max(3, mh * 0.15);
         ctx.fillRect(ox - mp, oy - mh - 2, w + mp * 2, mh * 1.28 + 6);
-        ctx.font = `${t.isItalic ? 'italic ' : ''}${t.isBold ? 'bold ' : ''}${h}px Arial`;
+        ctx.font = `${t.isItalic ? 'italic ' : ''}${t.isBold ? 'bold ' : ''}${h}px 'RobotoEmb', Arial`;
         ctx.fillStyle = t.color || '#000000';
         ctx.textBaseline = 'alphabetic';
         ctx.fillText(t.text, nx, ny);
+    });
+    addedTexts.filter(a => a.page === pageNum).forEach(a => {
+        const [ax, ay] = vp.convertToViewportPoint(a.x, a.y);
+        ctx.font = `${a.isItalic ? 'italic ' : ''}${a.isBold ? 'bold ' : ''}${a.fontSize * editorScale}px 'RobotoEmb', Arial`;
+        ctx.fillStyle = a.color || '#000000';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(a.text, ax, ay);
     });
     editorShapes.filter(sh => sh.page === pageNum).forEach(sh => {
         ctx.strokeStyle = sh.color;
