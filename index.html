@@ -141,6 +141,19 @@ function getEmbeddedFont(style) {
         .file-item-name { font-weight: bold; color: #202124; font-size: 14px; word-break: break-all; }
         .file-item-meta { font-size: 12px; color: #605e5c; }
         .file-item-actions { display: flex; gap: 5px; align-items: center; }
+        .file-item { cursor: pointer; }
+        .file-item:hover { border-color: var(--primary-hover); }
+        .file-item.selected { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(0,90,158,0.25); background: #eef5fc; }
+        #tab-merge .left-panel { width: 400px; overflow: hidden; padding-right: 0; }
+        .merge-list-card { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+        .merge-list-card .file-list { min-height: 0; padding: 10px; }
+        .merge-list-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .merge-list-head .card-title { margin: 0; }
+        .merge-preview-area { flex: 1; min-height: 0; overflow: auto; background: #f3f2f1; padding: 15px; border-radius: 4px; display: flex; justify-content: center; align-items: flex-start; }
+        .merge-preview-area canvas { display: none; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.25); flex-shrink: 0; }
+        .merge-preview-empty { color: gray; font-style: italic; text-align: center; margin: auto; padding: 40px 10px; }
+        .merge-preview-title { font-weight: bold; color: var(--primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        .merge-preview-nav { display: flex; gap: 8px; align-items: center; flex-shrink: 0; font-weight: bold; font-size: 13px; }
         
         .compare-view { display: flex; flex-direction: row; gap: 15px; position: relative; flex: 1; overflow: hidden; }
         .compare-pane { flex: 1; overflow-y: auto; overflow-x: auto; background: #f3f2f1; border: 1px solid #d2d0ce; border-radius: 4px; padding: 10px; text-align: center; }
@@ -292,6 +305,9 @@ function getEmbeddedFont(style) {
         html[data-theme="dark"] .page-box.drag-over { background: #1e3a55; }
         html[data-theme="dark"] .page-info,
         html[data-theme="dark"] .file-item-name { color: #e6e8eb; }
+        html[data-theme="dark"] .file-item.selected { background: #1e3a55; border-color: #4da3ff; box-shadow: 0 0 0 2px rgba(77,163,255,0.3); }
+        html[data-theme="dark"] .merge-preview-area { background: #1d2024; }
+        html[data-theme="dark"] .merge-preview-title, html[data-theme="dark"] .merge-preview-nav { color: #e6e8eb; }
         html[data-theme="dark"] .file-item-meta { color: #a3a9b1; }
         html[data-theme="dark"] .preview-header,
         html[data-theme="dark"] .pagination-container { border-color: #3a3f47; }
@@ -473,18 +489,32 @@ function getEmbeddedFont(style) {
                     <input type="file" id="merge-input" accept="application/pdf,image/*" multiple style="display:none" onchange="addMergeFiles(this)">
                     <button class="btn" onclick="document.getElementById('merge-input').click()">➕ Chọn các file PDF / Ảnh</button>
                 </div>
-                <div class="card" style="margin-top: auto;">
+                <div class="card merge-list-card">
+                    <div class="merge-list-head">
+                        <p class="card-title">Danh sách file đợi gộp</p>
+                        <button class="btn btn-danger btn-small" onclick="clearMergeList()">🧹 Xóa hết</button>
+                    </div>
+                    <div class="file-list" id="file-list-container">
+                        <div style="color:gray; font-style:italic; text-align:center; padding-top:40px;">Chưa chọn tệp tin nào.</div>
+                    </div>
+                </div>
+                <div class="card">
                     <p class="card-title">2. Tiến Hành Gộp</p>
                     <button class="btn btn-success" id="merge-submit-btn" onclick="generateMergedPDF()" disabled>🧱 GỘP & TẢI FILE MỚI</button>
                 </div>
             </div>
             <div class="right-panel">
                 <div class="preview-header">
-                    <span style="font-weight: bold; color: var(--primary);">DANH SÁCH FILE ĐỢI GỘP</span>
-                    <button class="btn btn-danger btn-small" onclick="clearMergeList()">🧹 Xóa hết</button>
+                    <span class="merge-preview-title" id="merge-preview-title">XEM TRƯỚC</span>
+                    <div class="merge-preview-nav">
+                        <button class="btn btn-small" id="merge-prev-btn" onclick="changeMergePreviewPage(-1)" disabled>◀ Trước</button>
+                        <span id="merge-page-indicator">0 / 0</span>
+                        <button class="btn btn-small" id="merge-next-btn" onclick="changeMergePreviewPage(1)" disabled>Sau ▶</button>
+                    </div>
                 </div>
-                <div class="file-list" id="file-list-container">
-                    <div style="color:gray; font-style:italic; text-align:center; padding-top:40px;">Chưa chọn tệp tin nào.</div>
+                <div class="merge-preview-area" id="merge-preview-area">
+                    <canvas id="merge-preview-canvas"></canvas>
+                    <div class="merge-preview-empty" id="merge-preview-empty">Nhấn vào một file ở danh sách bên trái để xem trước.</div>
                 </div>
             </div>
         </div>
@@ -816,6 +846,7 @@ function switchTab(tabId, btn) {
     document.getElementById(tabId).classList.add('active');
     btn.classList.add('active');
     if (tabId === 'tab-compare') setTimeout(renderCompare, 100);
+    if (tabId === 'tab-merge') setTimeout(renderMergePreview, 100);
     if (tabId === 'tab-editor' && editorPdfJsDoc) setTimeout(editorRenderPage, 100);
 }
 
@@ -1350,23 +1381,174 @@ function escapeHtml(str) {
     }[c]));
 }
 
+// ===================== Danh sách gộp + xem trước =====================
+let mergeSelectedFile = null;      // file đang được chọn để xem trước (giữ theo đối tượng, không theo vị trí)
+let mergePreviewPage = 1;
+let mergePreviewTaskId = 0;
+let mergePreviewKey = '';
+let mergePreviewRenderTask = null;
+const mergePreviewDocs = new WeakMap();   // fileObj -> Promise<pdfjs doc>
+const mergeFileIds = new WeakMap();       // fileObj -> mã định danh riêng (không đổi khi đổi thứ tự)
+let mergeFileIdSeq = 0;
+
+function mergeFileId(fileObj) {
+    if (!mergeFileIds.has(fileObj)) mergeFileIds.set(fileObj, ++mergeFileIdSeq);
+    return mergeFileIds.get(fileObj);
+}
+
+function releaseMergePreviewDoc(fileObj) {
+    const p = mergePreviewDocs.get(fileObj);
+    if (!p) return;
+    mergePreviewDocs.delete(fileObj);
+    p.then(d => d.destroy()).catch(() => {});
+}
+
 function renderMergeList() {
     const container = document.getElementById('file-list-container');
     const submitBtn = document.getElementById('merge-submit-btn');
+    // Nếu file đang chọn không còn trong danh sách thì chọn file đầu tiên
+    if (mergeSelectedFile && mergeFilesArray.indexOf(mergeSelectedFile) === -1) mergeSelectedFile = null;
+    if (!mergeSelectedFile && mergeFilesArray.length) {
+        mergeSelectedFile = mergeFilesArray[0];
+        mergePreviewPage = 1;
+    }
     if (mergeFilesArray.length === 0) {
         container.innerHTML = `<div style="color:gray; font-style:italic; text-align:center; padding-top:40px;">Chưa chọn tệp tin nào.</div>`;
         submitBtn.disabled = true;
+        renderMergePreview();
         return;
     }
     submitBtn.disabled = mergeFilesArray.length < 2;
+    const oldScroll = container.scrollTop;
     container.innerHTML = "";
     mergeFilesArray.forEach((fileObj, idx) => {
         const item = document.createElement('div');
-        item.className = "file-item";
-        item.innerHTML = `\n                    <div class="file-item-info"><span class="file-item-name">${idx + 1}. ${escapeHtml(fileObj.name)}</span><span class="file-item-meta">Số trang: ${fileObj.pageCount} trang</span></div>\n                    <div class="file-item-actions">\n                        <button class="btn btn-small" onclick="moveMergeFile(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>\n                        <button class="btn btn-small" onclick="moveMergeFile(${idx}, 1)" ${idx === mergeFilesArray.length - 1 ? 'disabled' : ''}>▼</button>\n                        <button class="btn btn-danger btn-small" onclick="deleteMergeFile(${idx})">❌</button>\n                    </div>`;
+        item.className = "file-item" + (fileObj === mergeSelectedFile ? " selected" : "");
+        item.title = "Nhấn để xem trước";
+        item.innerHTML = `
+                    <div class="file-item-info"><span class="file-item-name">${idx + 1}. ${escapeHtml(fileObj.name)}</span><span class="file-item-meta">Số trang: ${fileObj.pageCount} trang</span></div>
+                    <div class="file-item-actions">
+                        <button class="btn btn-small" onclick="moveMergeFile(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
+                        <button class="btn btn-small" onclick="moveMergeFile(${idx}, 1)" ${idx === mergeFilesArray.length - 1 ? 'disabled' : ''}>▼</button>
+                        <button class="btn btn-danger btn-small" onclick="deleteMergeFile(${idx})">❌</button>
+                    </div>`;
+        item.addEventListener('click', e => {
+            if (e.target.closest('button')) return;
+            selectMergeFile(idx);
+        });
         container.appendChild(item);
     });
+    container.scrollTop = oldScroll;
+    renderMergePreview();
 }
+
+function selectMergeFile(index) {
+    const f = mergeFilesArray[index];
+    if (!f) return;
+    if (mergeSelectedFile !== f) {
+        mergeSelectedFile = f;
+        mergePreviewPage = 1;
+    }
+    // Chỉ đổi màu chọn, không dựng lại danh sách để giữ vị trí cuộn
+    document.querySelectorAll('#file-list-container .file-item').forEach((el, i) => {
+        el.classList.toggle('selected', mergeFilesArray[i] === mergeSelectedFile);
+    });
+    renderMergePreview();
+}
+
+function changeMergePreviewPage(dir) {
+    if (!mergeSelectedFile) return;
+    const n = mergePreviewPage + dir;
+    if (n < 1 || n > mergeSelectedFile.pageCount) return;
+    mergePreviewPage = n;
+    renderMergePreview();
+}
+
+async function renderMergePreview() {
+    const area = document.getElementById('merge-preview-area');
+    const canvas = document.getElementById('merge-preview-canvas');
+    const empty = document.getElementById('merge-preview-empty');
+    const title = document.getElementById('merge-preview-title');
+    const indicator = document.getElementById('merge-page-indicator');
+    const prevBtn = document.getElementById('merge-prev-btn');
+    const nextBtn = document.getElementById('merge-next-btn');
+    if (!area) return;
+    const f = mergeSelectedFile;
+    if (!f) {
+        ++mergePreviewTaskId;
+        mergePreviewKey = '';
+        if (mergePreviewRenderTask) { try { mergePreviewRenderTask.cancel(); } catch (e) {} }
+        canvas.style.display = 'none';
+        empty.style.display = 'block';
+        empty.textContent = 'Nhấn vào một file ở danh sách bên trái để xem trước.';
+        title.textContent = 'XEM TRƯỚC';
+        indicator.textContent = '0 / 0';
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+        return;
+    }
+    const total = f.pageCount;
+    if (mergePreviewPage > total) mergePreviewPage = total;
+    if (mergePreviewPage < 1) mergePreviewPage = 1;
+    title.textContent = 'XEM TRƯỚC: ' + f.name;
+    indicator.textContent = `${mergePreviewPage} / ${total}`;
+    prevBtn.disabled = mergePreviewPage <= 1;
+    nextBtn.disabled = mergePreviewPage >= total;
+
+    const availW = area.clientWidth - 30;
+    if (availW < 50 || typeof pdfjsLib === 'undefined') return;   // tab đang ẩn: switchTab sẽ gọi lại
+    const key = [ mergeFileId(f), mergePreviewPage, availW ].join('|');
+    if (key === mergePreviewKey) return;
+    const prevKeyFile = mergePreviewKey.split('|')[0];
+    mergePreviewKey = key;
+    const taskId = ++mergePreviewTaskId;
+    if (mergePreviewRenderTask) { try { mergePreviewRenderTask.cancel(); } catch (e) {} }
+    try {
+        let docPromise = mergePreviewDocs.get(f);
+        if (!docPromise) {
+            docPromise = pdfjsLib.getDocument({ data: f.bytes.slice(0) }).promise;
+            mergePreviewDocs.set(f, docPromise);
+        }
+        const doc = await docPromise;
+        if (taskId !== mergePreviewTaskId) return;
+        const page = await doc.getPage(mergePreviewPage);
+        if (taskId !== mergePreviewTaskId) return;
+        const base = page.getViewport({ scale: 1 });
+        const cssScale = Math.min(availW / base.width, 3);
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const vp = page.getViewport({ scale: cssScale * dpr });
+        canvas.width = Math.floor(vp.width);
+        canvas.height = Math.floor(vp.height);
+        canvas.style.width = Math.floor(vp.width / dpr) + 'px';
+        canvas.style.height = Math.floor(vp.height / dpr) + 'px';
+        mergePreviewRenderTask = page.render({ canvasContext: canvas.getContext('2d'), viewport: vp });
+        await mergePreviewRenderTask.promise;
+        if (taskId !== mergePreviewTaskId) return;
+        empty.style.display = 'none';
+        canvas.style.display = 'block';
+        if (key.split('|')[0] !== prevKeyFile) area.scrollTop = 0;
+    } catch (e) {
+        if (e && e.name === 'RenderingCancelledException') return;
+        if (taskId !== mergePreviewTaskId) return;
+        mergePreviewKey = '';
+        mergePreviewDocs.delete(f);
+        canvas.style.display = 'none';
+        empty.style.display = 'block';
+        empty.textContent = 'Không thể xem trước file này.';
+        console.warn('Lỗi xem trước:', e);
+    }
+}
+
+(function bindMergePreviewResize() {
+    let t = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(t);
+        t = setTimeout(() => {
+            const tab = document.getElementById('tab-merge');
+            if (tab && tab.classList.contains('active')) renderMergePreview();
+        }, 200);
+    });
+})();
 
 function moveMergeFile(index, dir) {
     const target = index + dir;
@@ -1378,12 +1560,23 @@ function moveMergeFile(index, dir) {
 }
 
 function deleteMergeFile(index) {
+    const removed = mergeFilesArray[index];
+    if (!removed) return;
     mergeFilesArray.splice(index, 1);
+    releaseMergePreviewDoc(removed);
+    if (removed === mergeSelectedFile) {
+        // Chọn file liền kề thay thế
+        mergeSelectedFile = mergeFilesArray[Math.min(index, mergeFilesArray.length - 1)] || null;
+        mergePreviewPage = 1;
+    }
     renderMergeList();
 }
 
 function clearMergeList() {
+    mergeFilesArray.forEach(releaseMergePreviewDoc);
     mergeFilesArray = [];
+    mergeSelectedFile = null;
+    mergePreviewPage = 1;
     renderMergeList();
 }
 
