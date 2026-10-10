@@ -13,6 +13,8 @@
     document.documentElement.setAttribute('data-theme', t);
 })();
 </script>
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#0078d4">
     <title>PDF tool by hachihi.vn - 0933842126, support by: Hải Hoàng 09-1800-1944</title>
     
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
@@ -301,6 +303,18 @@ function getEmbeddedFont(style) {
         }
         #editor-pdf-canvas { display: block; }
         #editor-draw-canvas { position: absolute; top:0; left:0; pointer-events: auto; z-index: 5; touch-action: none; }
+        .editor-region-selection {
+            position: absolute; display: none; z-index: 30; pointer-events: none;
+            border: 2px solid #0078d4; background: rgba(0, 120, 212, 0.16);
+            box-shadow: 0 0 0 9999px rgba(20, 27, 36, 0.28);
+        }
+        .editor-container-shell.region-selecting { cursor: crosshair; }
+        #tab-editor.region-selecting .editor-sidebar,
+        #tab-editor.region-selecting .editor-pagebar { opacity: .58; }
+        #tab-editor.region-selecting .editor-sidebar button,
+        #tab-editor.region-selecting .editor-sidebar input,
+        #tab-editor.region-selecting .editor-sidebar select,
+        #tab-editor.region-selecting .editor-pagebar button { pointer-events: none; }
         
         .editor-text-layer {
             position: absolute;
@@ -345,6 +359,8 @@ function getEmbeddedFont(style) {
             background-color: transparent !important;
             outline: 1px solid rgba(0, 90, 158, 0.3);
         }
+        .editor-text-layer span.region-selected { outline: 2px solid #0078d4 !important; background-color: rgba(0,120,212,.10) !important; }
+        .editor-region-select { box-sizing: border-box; }
         .editor-text-layer span.dragging {
             opacity: 0.8;
             box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
@@ -479,6 +495,28 @@ function getEmbeddedFont(style) {
         html[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #454b55; border-radius: 6px; border: 2px solid #1b1e22; }
         html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #5a616c; }
         
+
+        /* ===== Menu thả xuống & công cụ PDF ===== */
+        .tab-btn.has-menu::after { content: " ▾"; font-size: 10px; }
+        .nav-menu { position: fixed; display: none; z-index: 9999; min-width: 270px; background: #fff; border: 1px solid #d2d0ce; border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.2); padding: 4px; }
+        .nav-menu.open { display: block; }
+        .menu-item { display: block; width: 100%; text-align: left; border: none; background: none; padding: 8px 12px; cursor: pointer; font-size: 13px; color: var(--text-color); border-radius: 4px; }
+        .menu-item:hover { background: #eef4fb; }
+        .menu-item.active { color: var(--primary); font-weight: bold; }
+        .menu-sep { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #888; padding: 6px 12px 2px; }
+        html[data-theme="dark"] .nav-menu { background: #25282e; border-color: #3a3f47; }
+        html[data-theme="dark"] .menu-item:hover { background: #2f343c; }
+        html[data-theme="dark"] .menu-item.active { color: #6cb4ff; }
+        #tab-tools .tl-in { width: 100%; box-sizing: border-box; height: 32px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 6px; background: #fff; margin-bottom: 6px; }
+        #tab-tools textarea.tl-in { padding: 6px; }
+        #tab-tools .tl-lb { display: block; font-size: 11px; font-weight: 600; color: #555; margin: 4px 0 2px; }
+        #tab-tools .tl-ck { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; margin-bottom: 4px; }
+        #tab-tools .tl-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        #tab-tools .tl-opts { display: none; }
+        #tab-tools .tl-row { display: flex; align-items: center; padding: 8px 10px; border: 1px solid #d2d0ce; border-radius: 6px; margin-bottom: 6px; background: #fff; color: #222; }
+        html[data-theme="dark"] #tab-tools .tl-row { background: #25282e; border-color: #3a3f47; color: #e6e8eb; }
+        html[data-theme="dark"] #tab-tools .tl-in { background: #1d2025; border-color: #3a3f47; color: #e6e8eb; }
+        html[data-theme="dark"] #tab-tools .tl-lb { color: #aab0b8; }
         @media print {
             html[data-theme="dark"] body { background: #fff !important; color: #000 !important; }
         }
@@ -494,11 +532,31 @@ function getEmbeddedFont(style) {
         <button class="tab-btn" onclick="switchTab('tab-merge', this)">🗂️ Gộp File</button>
         <button class="tab-btn" onclick="switchTab('tab-compare', this)">⚖️ Chế độ So Sánh</button>
         <button class="tab-btn" onclick="switchTab('tab-editor', this)">✏️ Chỉnh Sửa PDF</button>
-        <button class="tab-btn" onclick="switchTab('tab-word', this)">📝 PDF → Word</button>
-        <button class="tab-btn" onclick="switchTab('tab-excel', this)">📊 PDF → Excel</button>
+        <button class="tab-btn has-menu" id="nav-convert" onclick="toggleMenu('menu-convert', this)">🔄 Chuyển đổi</button>
+        <button class="tab-btn has-menu" id="nav-tools" onclick="toggleMenu('menu-tools', this)">🧰 Công cụ PDF</button>
         <button class="tab-btn" onclick="switchTab('tab-about', this)">ℹ️ Giới Thiệu</button>
         <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Chuyển chế độ Sáng / Tối" aria-label="Chuyển chế độ Sáng / Tối">🌙 Chế độ tối</button>
         <button class="theme-toggle" id="clear-session-btn" style="margin-left:8px;" onclick="clearSavedSession()" title="Xóa file và thao tác đã được lưu tự động trong trình duyệt">🗑️ Xóa dữ liệu đã lưu</button>
+    </div>
+
+    <div class="nav-menu" id="menu-convert" data-owner="nav-convert">
+        <button class="menu-item" onclick="switchTab('tab-word', this)">📝 PDF → Word</button>
+        <button class="menu-item" onclick="switchTab('tab-excel', this)">📊 PDF → Excel</button>
+        <button class="menu-item" onclick="switchTab('tab-tools', this); toolsSelect('pdf2img')">🖼️ PDF → Ảnh</button>
+        <button class="menu-item" onclick="switchTab('tab-tools', this); toolsSelect('img2pdf')">📄 Ảnh → PDF</button>
+        <button class="menu-item" onclick="switchTab('tab-tools', this); toolsSelect('ocr')">🔍 OCR: PDF scan → PDF tìm kiếm được</button>
+    </div>
+    <div class="nav-menu" id="menu-tools" data-owner="nav-tools">
+        <div class="menu-sep">Trang &amp; file</div>
+        <button class="menu-item" onclick="switchTab('tab-tools', this); toolsSelect('split')">✂️ Tách file</button>
+        <button class="menu-item" onclick="switchTab('tab-tools', this); toolsSelect('compress')">🗜️ Nén PDF</button>
+        <div class="menu-sep">Bảo mật</div>
+        <button class="menu-item" onclick="switchTab('tab-tools', this); toolsSelect('protect')">🔒 Đặt / gỡ mật khẩu</button>
+        <button class="menu-item" onclick="switchTab('tab-tools', this); toolsSelect('meta')">🧹 Xóa / sửa metadata</button>
+        <div class="menu-sep">Đánh dấu</div>
+        <button class="menu-item" onclick="switchTab('tab-tools', this); toolsSelect('watermark')">💧 Chèn watermark</button>
+        <button class="menu-item" onclick="switchTab('tab-tools', this); toolsSelect('pagenum')">🔢 Đánh số trang</button>
+        <button class="menu-item" onclick="switchTab('tab-tools', this); toolsSelect('bookmark')">🔖 Tạo mục lục (bookmark)</button>
     </div>
 
     <div id="tab-main" class="tab-content active">
@@ -815,6 +873,7 @@ function getEmbeddedFont(style) {
                         <canvas id="editor-pdf-canvas"></canvas>
                         <canvas id="editor-draw-canvas"></canvas>
                         <div id="editor-text-layer" class="editor-text-layer"></div>
+                        <div id="editor-region-selection" class="editor-region-selection" aria-hidden="true"></div>
                     </div>
                 </div>
 
@@ -942,6 +1001,230 @@ function getEmbeddedFont(style) {
         </div>
     </div>
 
+<div id="tab-tools" class="tab-content">
+        <div class="main-container">
+            <div class="left-panel">
+                <div class="card">
+                    <p class="card-title">1. Chọn công cụ</p>
+                    <select id="tl-tool" class="tl-in">
+                        <optgroup label="Trang &amp; file">
+                            <option value="split">✂️ Tách file PDF</option>
+                            <option value="compress">🗜️ Nén PDF (giảm dung lượng)</option>
+                        </optgroup>
+                        <optgroup label="Chuyển đổi">
+                            <option value="pdf2img">🖼️ PDF → Ảnh (PNG/JPG)</option>
+                            <option value="img2pdf">📄 Ảnh → PDF</option>
+                            <option value="ocr">🔍 OCR: PDF scan → PDF tìm kiếm được</option>
+                        </optgroup>
+                        <optgroup label="Bảo mật">
+                            <option value="protect">🔒 Đặt / gỡ mật khẩu</option>
+                            <option value="meta">🧹 Xóa / sửa metadata</option>
+                        </optgroup>
+                        <optgroup label="Đánh dấu">
+                            <option value="watermark">💧 Chèn watermark</option>
+                            <option value="pagenum">🔢 Đánh số trang</option>
+                            <option value="bookmark">🔖 Tạo mục lục (bookmark)</option>
+                        </optgroup>
+                    </select>
+                    <p class="editor-hint" id="tl-hint" style="margin-top:4px;"></p>
+                </div>
+                <div class="card">
+                    <p class="card-title">2. Chọn file</p>
+                    <input type="file" id="tl-input" accept="application/pdf" multiple style="display:none">
+                    <button class="btn" id="tl-pick-btn">➕ Chọn file PDF</button>
+                    <p class="editor-hint" style="margin-top:2px;">Hoặc kéo thả vào khung bên phải. Mọi thao tác chạy ngay trên máy bạn, file không bị gửi đi đâu.</p>
+                </div>
+                <div class="card">
+                    <p class="card-title">3. Tùy chọn</p>
+
+                    <div class="tl-opts" data-tool="split">
+                        <label class="tl-lb">Cách tách:</label>
+                        <select id="tl-split-mode" class="tl-in">
+                            <option value="ranges">Theo khoảng trang (mỗi khoảng một file)</option>
+                            <option value="every">Cứ N trang một file</option>
+                            <option value="each">Mỗi trang một file</option>
+                            <option value="extract">Trích các trang đã chọn thành một file</option>
+                        </select>
+                        <div id="tl-split-ranges-row">
+                            <label class="tl-lb">Trang / khoảng trang:</label>
+                            <input type="text" id="tl-split-ranges" class="tl-in" placeholder="ví dụ: 1-3, 4-6, 9">
+                            <p class="editor-hint">Với "theo khoảng trang", mỗi mục cách nhau dấu phẩy sẽ ra một file riêng. Với "trích", các trang gom chung một file.</p>
+                        </div>
+                        <div id="tl-split-n-row" style="display:none;">
+                            <label class="tl-lb">Số trang mỗi file (N):</label>
+                            <input type="number" id="tl-split-n" class="tl-in" min="1" value="10">
+                        </div>
+                    </div>
+
+                    <div class="tl-opts" data-tool="compress">
+                        <label class="tl-lb">Mức nén:</label>
+                        <select id="tl-comp-level" class="tl-in">
+                            <option value="light">Nhẹ: giữ nét cao, nén ảnh bên trong</option>
+                            <option value="balanced" selected>Cân bằng: nén ảnh bên trong (khuyên dùng)</option>
+                            <option value="strong">Mạnh: ảnh nhỏ hơn, giảm độ nét</option>
+                            <option value="raster">Tối đa: chuyển mỗi trang thành ảnh (mất chữ chọn được)</option>
+                        </select>
+                        <p class="editor-hint">Ba mức đầu giữ nguyên chữ và bố cục, chỉ nén lại các ảnh nhúng trong PDF (hiệu quả nhất với PDF scan hoặc nhiều ảnh). Mức "Tối đa" biến cả trang thành ảnh JPEG, nhỏ nhất nhưng không còn chọn/tìm chữ được; có thể OCR lại sau. Nếu không giảm được dung lượng, tool giữ nguyên file gốc.</p>
+                    </div>
+
+                    <div class="tl-opts" data-tool="pdf2img">
+                        <label class="tl-lb">Định dạng:</label>
+                        <select id="tl-p2i-fmt" class="tl-in"><option value="image/png">PNG (nét, nền trong suốt không có)</option><option value="image/jpeg">JPG (nhẹ hơn)</option></select>
+                        <label class="tl-lb">Độ phân giải:</label>
+                        <select id="tl-p2i-dpi" class="tl-in"><option value="72">72 DPI (xem màn hình)</option><option value="110">110 DPI</option><option value="150" selected>150 DPI (cân bằng)</option><option value="200">200 DPI</option><option value="300">300 DPI (in ấn)</option></select>
+                        <label class="tl-lb">Trang cần xuất (trống = tất cả):</label>
+                        <input type="text" id="tl-p2i-pages" class="tl-in" placeholder="ví dụ: 1-3,5">
+                    </div>
+
+                    <div class="tl-opts" data-tool="img2pdf">
+                        <label class="tl-lb">Khổ trang:</label>
+                        <select id="tl-i2p-size" class="tl-in">
+                            <option value="a4auto">A4, tự chọn dọc/ngang theo ảnh</option>
+                            <option value="a4p">A4 dọc</option>
+                            <option value="a4l">A4 ngang</option>
+                            <option value="letter">Letter (dọc/ngang tự chọn)</option>
+                            <option value="fit">Đúng kích thước từng ảnh</option>
+                        </select>
+                        <label class="tl-lb">Lề (mm):</label>
+                        <input type="number" id="tl-i2p-margin" class="tl-in" min="0" max="50" value="0">
+                        <p class="editor-hint">Thứ tự trang theo thứ tự danh sách bên phải (dùng nút ↑ ↓ để đổi). Tất cả ảnh gộp thành một file PDF.</p>
+                    </div>
+
+                    <div class="tl-opts" data-tool="ocr">
+                        <label class="tl-lb">Ngôn ngữ nhận dạng:</label>
+                        <select id="tl-ocr-lang" class="tl-in"><option value="vie+eng" selected>Tiếng Việt + Tiếng Anh</option><option value="vie">Tiếng Việt</option><option value="eng">Tiếng Anh</option></select>
+                        <label class="tl-lb">Độ phân giải quét:</label>
+                        <select id="tl-ocr-dpi" class="tl-in"><option value="150">150 DPI (nhanh)</option><option value="200" selected>200 DPI (cân bằng)</option><option value="300">300 DPI (chính xác, chậm)</option></select>
+                        <label class="tl-lb">Kết quả:</label>
+                        <select id="tl-ocr-out" class="tl-in"><option value="pdf">PDF tìm kiếm được (giữ nguyên hình ảnh gốc)</option><option value="txt">Chỉ file văn bản .txt</option><option value="both">Cả hai</option></select>
+                        <label class="tl-lb">Trang cần OCR (trống = tất cả):</label>
+                        <input type="text" id="tl-ocr-pages" class="tl-in" placeholder="ví dụ: 1-5">
+                        <p class="editor-hint">Chữ nhận dạng được đặt vô hình đè lên ảnh scan, nên bạn tìm kiếm, chọn và copy chữ được. Sau khi OCR, dùng file kết quả ở các tab PDF → Word / Excel / So sánh. Lần đầu cần tải dữ liệu nhận dạng (khoảng 15 MB), sau đó được lưu lại trong trình duyệt.</p>
+                    </div>
+
+                    <div class="tl-opts" data-tool="protect">
+                        <label class="tl-lb">Thao tác:</label>
+                        <select id="tl-pw-mode" class="tl-in"><option value="set">Đặt mật khẩu (mã hóa AES-256)</option><option value="remove">Gỡ mật khẩu</option></select>
+                        <div id="tl-pw-set">
+                            <label class="tl-lb">Mật khẩu mở file:</label>
+                            <input type="password" id="tl-pw-user" class="tl-in" autocomplete="new-password" placeholder="để trống nếu chỉ muốn hạn chế quyền">
+                            <label class="tl-lb">Mật khẩu chủ (để đổi quyền, tùy chọn):</label>
+                            <input type="password" id="tl-pw-owner" class="tl-in" autocomplete="new-password">
+                            <label class="tl-lb">Cho phép:</label>
+                            <label class="tl-ck"><input type="checkbox" id="tl-pw-print" checked> In</label>
+                            <label class="tl-ck"><input type="checkbox" id="tl-pw-copy" checked> Sao chép chữ</label>
+                            <label class="tl-ck"><input type="checkbox" id="tl-pw-edit"> Chỉnh sửa, ghi chú</label>
+                        </div>
+                        <div id="tl-pw-rm" style="display:none;">
+                            <label class="tl-lb">Mật khẩu hiện tại (nếu có):</label>
+                            <input type="password" id="tl-pw-cur" class="tl-in" autocomplete="off">
+                            <p class="editor-hint">Cần biết mật khẩu mở file. Tool không bẻ khóa mật khẩu.</p>
+                        </div>
+                        <details style="margin-top:6px;">
+                            <summary style="font-size:11px; cursor:pointer; color:#555;">Nâng cao: nguồn bộ xử lý</summary>
+                            <input type="text" id="tl-base" class="tl-in" style="margin-top:4px; font-size:11px;" value="https://cdn.jsdelivr.net/npm/@bentopdf/pymupdf-wasm@0.11.16/">
+                            <p class="editor-hint">Chức năng mật khẩu dùng chung bộ PyMuPDF với tab PDF → Word (~55 MB, tải một lần).</p>
+                        </details>
+                    </div>
+
+                    <div class="tl-opts" data-tool="meta">
+                        <label class="tl-lb">Thao tác:</label>
+                        <select id="tl-meta-mode" class="tl-in"><option value="clear">Xóa sạch metadata (tác giả, tiêu đề, phần mềm, ngày tạo...)</option><option value="edit">Sửa metadata</option></select>
+                        <div id="tl-meta-edit" style="display:none;">
+                            <label class="tl-lb">Tiêu đề:</label><input type="text" id="tl-meta-title" class="tl-in">
+                            <label class="tl-lb">Tác giả:</label><input type="text" id="tl-meta-author" class="tl-in">
+                            <label class="tl-lb">Chủ đề:</label><input type="text" id="tl-meta-subject" class="tl-in">
+                            <label class="tl-lb">Từ khóa (cách nhau dấu phẩy):</label><input type="text" id="tl-meta-keywords" class="tl-in">
+                            <label class="tl-lb">Ứng dụng tạo:</label><input type="text" id="tl-meta-creator" class="tl-in">
+                            <label class="tl-lb">Trình tạo PDF:</label><input type="text" id="tl-meta-producer" class="tl-in">
+                            <p class="editor-hint">Ô trống sẽ bị xóa khỏi file. Các ô được điền sẵn từ file đầu tiên trong danh sách.</p>
+                        </div>
+                        <label class="tl-ck"><input type="checkbox" id="tl-meta-xmp" checked> Xóa luôn metadata XMP ẩn</label>
+                    </div>
+
+                    <div class="tl-opts" data-tool="watermark">
+                        <label class="tl-lb">Loại:</label>
+                        <select id="tl-wm-type" class="tl-in"><option value="text">Chữ</option><option value="image">Ảnh (logo, con dấu)</option></select>
+                        <div id="tl-wm-text-row">
+                            <label class="tl-lb">Nội dung chữ:</label>
+                            <input type="text" id="tl-wm-text" class="tl-in" value="BẢN SAO">
+                            <div class="tl-grid2">
+                                <div><label class="tl-lb">Cỡ chữ:</label><input type="number" id="tl-wm-size" class="tl-in" min="8" max="400" value="72"></div>
+                                <div><label class="tl-lb">Màu:</label><input type="color" id="tl-wm-color" class="tl-in" value="#c42b2b" style="padding:2px;"></div>
+                            </div>
+                            <label class="tl-ck"><input type="checkbox" id="tl-wm-bold" checked> Chữ đậm</label>
+                        </div>
+                        <div id="tl-wm-img-row" style="display:none;">
+                            <label class="tl-lb">Chọn ảnh (PNG/JPG):</label>
+                            <input type="file" id="tl-wm-img" accept="image/*" class="tl-in" style="height:auto;">
+                            <label class="tl-lb">Độ rộng ảnh (% chiều rộng trang):</label>
+                            <input type="number" id="tl-wm-imgw" class="tl-in" min="5" max="100" value="40">
+                        </div>
+                        <div class="tl-grid2">
+                            <div><label class="tl-lb">Độ mờ (%):</label><input type="number" id="tl-wm-op" class="tl-in" min="5" max="100" value="25"></div>
+                            <div><label class="tl-lb">Góc xoay (độ):</label><input type="number" id="tl-wm-rot" class="tl-in" min="-180" max="180" value="45"></div>
+                        </div>
+                        <label class="tl-lb">Vị trí:</label>
+                        <select id="tl-wm-pos" class="tl-in"><option value="center">Chính giữa trang</option><option value="tile">Lặp kín trang</option></select>
+                        <label class="tl-lb">Trang áp dụng (trống = tất cả):</label>
+                        <input type="text" id="tl-wm-pages" class="tl-in" placeholder="ví dụ: 1-3,5">
+                    </div>
+
+                    <div class="tl-opts" data-tool="pagenum">
+                        <label class="tl-lb">Định dạng:</label>
+                        <select id="tl-pn-fmt" class="tl-in">
+                            <option value="{n}">1, 2, 3...</option>
+                            <option value="{n}/{N}">1/10, 2/10...</option>
+                            <option value="Trang {n}">Trang 1, Trang 2...</option>
+                            <option value="Trang {n}/{N}">Trang 1/10, Trang 2/10...</option>
+                            <option value="- {n} -">- 1 -, - 2 -...</option>
+                        </select>
+                        <label class="tl-lb">Vị trí:</label>
+                        <select id="tl-pn-pos" class="tl-in">
+                            <option value="bc">Dưới, giữa</option><option value="br">Dưới, phải</option><option value="bl">Dưới, trái</option>
+                            <option value="tc">Trên, giữa</option><option value="tr">Trên, phải</option><option value="tl">Trên, trái</option>
+                        </select>
+                        <div class="tl-grid2">
+                            <div><label class="tl-lb">Cỡ chữ:</label><input type="number" id="tl-pn-size" class="tl-in" min="6" max="48" value="11"></div>
+                            <div><label class="tl-lb">Màu:</label><input type="color" id="tl-pn-color" class="tl-in" value="#333333" style="padding:2px;"></div>
+                        </div>
+                        <div class="tl-grid2">
+                            <div><label class="tl-lb">Bắt đầu đánh từ trang:</label><input type="number" id="tl-pn-from" class="tl-in" min="1" value="1"></div>
+                            <div><label class="tl-lb">Số của trang đầu:</label><input type="number" id="tl-pn-start" class="tl-in" min="0" value="1"></div>
+                        </div>
+                        <label class="tl-lb">Cách mép (mm):</label>
+                        <input type="number" id="tl-pn-margin" class="tl-in" min="3" max="60" value="10">
+                        <p class="editor-hint">Ví dụ bỏ trang bìa: đặt "Bắt đầu đánh từ trang" = 2.</p>
+                    </div>
+
+                    <div class="tl-opts" data-tool="bookmark">
+                        <label class="tl-lb">Danh sách mục lục (mỗi dòng một mục):</label>
+                        <textarea id="tl-bm-text" class="tl-in" rows="9" style="height:auto; font-family:Consolas,monospace; font-size:12px;" placeholder="Chương 1 | 1&#10;-Mục 1.1 | 2&#10;-Mục 1.2 | 4&#10;Chương 2 | 7"></textarea>
+                        <p class="editor-hint">Định dạng: <b>Tiêu đề | số trang</b>. Thêm dấu <b>-</b> đầu dòng để làm mục con (-- cho cấp 3).</p>
+                        <button class="btn" id="tl-bm-load" type="button">📥 Lấy mục lục hiện có của file đầu tiên</button>
+                        <button class="btn" id="tl-bm-pages" type="button">📃 Mỗi trang một mục</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <p class="card-title">4. Thực hiện</p>
+                    <button class="btn btn-success" id="tl-run-btn" disabled>▶ THỰC HIỆN</button>
+                    <button class="btn" id="tl-zip-btn" style="display:none;">📦 Tải tất cả (ZIP)</button>
+                    <button class="btn btn-danger" id="tl-clear-btn" style="display:none;">🧹 Xóa danh sách</button>
+                </div>
+            </div>
+            <div class="right-panel" id="tl-drop">
+                <div class="preview-header">
+                    <span class="merge-preview-title" id="tl-list-title">DANH SÁCH FILE</span>
+                </div>
+                <div class="file-list" id="tl-list" style="margin-top:8px;"></div>
+                <div id="tl-progress-wrap" style="display:none; margin-top:10px;">
+                    <div style="height:8px; background:#e1dfdd; border-radius:4px; overflow:hidden;"><div id="tl-progress-bar" style="height:100%; width:0; background:var(--success); transition:width .2s;"></div></div>
+                    <div id="tl-status" class="editor-hint" style="margin-top:4px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <div id="tab-about" class="tab-content">
 
     <div class="about-container"
@@ -1002,11 +1285,30 @@ function getEmbeddedFont(style) {
                 </li>
 
                 <li>
+                    <b>Chuyển đổi giữ định dạng:</b>
+                    PDF → Word, PDF → Excel (ô gộp, màu, font, căn lề), PDF ↔ Ảnh,
+                    OCR cho PDF scan (tiếng Việt).
+                </li>
+
+                <li>
+                    <b>Bộ công cụ PDF:</b>
+                    Tách file, nén PDF, đặt / gỡ mật khẩu, watermark, đánh số trang,
+                    tạo mục lục (bookmark), xóa / sửa metadata.
+                </li>
+
+                <li>
                     <b>Hoàn toàn Client-Side:</b>
                     Không thu thập file dữ liệu của người sử dụng.
                 </li>
 
             </ul>
+
+            <div class="card" style="max-width:680px; margin-top:12px;">
+                <p class="card-title">📴 Dùng khi không có mạng</p>
+                <p class="editor-hint" id="off-info"></p>
+                <button class="btn" id="off-btn" type="button">⬇ Tải sẵn các thư viện để dùng offline</button>
+                <div id="off-status" class="editor-hint" style="margin-top:4px;"></div>
+            </div>
 
         </div>
 
@@ -1108,11 +1410,32 @@ let cachedUnicodeFontBytes = {
     bolditalic: null
 };
 
+function closeMenus() { document.querySelectorAll('.nav-menu.open').forEach(function (m) { m.classList.remove('open'); }); }
+function toggleMenu(id, btn) {
+    var m = document.getElementById(id), was = m.classList.contains('open');
+    closeMenus();
+    if (was) return;
+    var r = btn.getBoundingClientRect();
+    m.style.top = (r.bottom + 2) + 'px';
+    m.style.left = Math.max(4, Math.min(r.left, window.innerWidth - 290)) + 'px';
+    m.classList.add('open');
+}
+document.addEventListener('click', function (e) { if (!e.target.closest('.nav-menu') && !e.target.closest('.has-menu')) closeMenus(); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenus(); });
+window.addEventListener('resize', closeMenus);
+
 function switchTab(tabId, btn) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-btn, .menu-item').forEach(b => b.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
-    btn.classList.add('active');
+    closeMenus();
+    if (btn) {
+        btn.classList.add('active');
+        if (btn.classList.contains('menu-item')) {
+            var ow = document.getElementById(btn.closest('.nav-menu').dataset.owner);
+            if (ow) ow.classList.add('active');
+        }
+    }
     if (tabId === 'tab-compare') setTimeout(renderCompare, 100);
     if (tabId === 'tab-merge') setTimeout(renderMergePreview, 100);
     if (tabId === 'tab-editor' && editorPdfJsDoc) setTimeout(editorRenderPage, 100);
@@ -1681,7 +2004,7 @@ function renderMergeList() {
         mergePreviewPage = 1;
     }
     if (mergeFilesArray.length === 0) {
-        container.innerHTML = `<div style="color:gray; font-style:italic; text-align:center; padding-top:40px;">Chưa chọn tệp tin nào.</div>`;
+        container.innerHTML = `<div style="color:gray; font-style:italic; text-align:center; padding-top:40px;">Ch��a chọn tệp tin nào.</div>`;
         submitBtn.disabled = true;
         renderMergePreview();
         return;
@@ -2203,7 +2526,7 @@ function cmpTextChanges(A, B) {
     return { changes: result, anchors: anchors };
 }
 
-// Làm mờ nhẹ (dọc 5 hàng, ngang 3 cột): đường kẻ mảnh bị lệch phần lẻ điểm ảnh vẫn giữ tổng độ đậm như nhau
+// Làm mờ nhẹ (dọc 5 hàng, ngang 3 cột): đường kẻ mảnh bị lệch phần lẻ điểm ảnh vẫn giữ tổng độ đ�����m như nhau
 function cmpBlur(src, w, h) {
     const tmp = new Uint8Array(src.length), out = new Uint8Array(src.length);
     for (let x = 0; x < w; x++) for (let c = 0; c < 3; c++) {
@@ -2376,7 +2699,7 @@ function cmpVisualChanges(cvA, cvB, A, B, anchors, textChanges) {
         const by0 = Math.max(0, Math.min(hB - 1, y0 + dy)), by1 = Math.max(by0 + 1, Math.min(hB, y1 + dy));
         const fa = dark(dA, w, x0, y0, x1, y1), fb = dark(dB, wB, x0, by0, x1, by1);
         let label = 'Hình/đồ họa khác nhau';
-        if (fa < 0.01 && fb >= 0.01) label = 'Thêm hình/đồ họa'; else if (fb < 0.01 && fa >= 0.01) label = 'Mất hình/đồ họa';
+        if (fa < 0.01 && fb >= 0.01) label = 'Thêm hình/đồ h���a'; else if (fb < 0.01 && fa >= 0.01) label = 'Mất hình/đồ họa';
         return {
             type: 'visual', label: label, before: '', after: '',
             bRects: [{ x: x0 / w, y: y0 / h, w: (x1 - x0) / w, h: (y1 - y0) / h }],
@@ -2690,6 +3013,67 @@ let isDrawingShape = false;
 let brushSize = 3;
 
 let currentDrawShape = null;
+let isSelectingEditorRegion = false;
+let editorSelectionStart = null;
+let editorControlStates = [];
+
+function setEditorRegionLocked(locked) {
+    const tab = document.getElementById('tab-editor');
+    if (!tab) return;
+    const controls = tab.querySelectorAll('.editor-sidebar button, .editor-sidebar input, .editor-sidebar select, .editor-pagebar button');
+    if (locked) {
+        if (!editorControlStates.length) editorControlStates = Array.from(controls).map(el => ({ el, disabled: el.disabled }));
+        tab.classList.add('region-selecting');
+        controls.forEach(el => { el.disabled = true; });
+    } else {
+        tab.classList.remove('region-selecting');
+        editorControlStates.forEach(({ el, disabled }) => { if (el.isConnected) el.disabled = disabled; });
+        editorControlStates = [];
+    }
+}
+
+function clearEditorRegionSelection() {
+    isSelectingEditorRegion = false;
+    editorSelectionStart = null;
+    const box = document.getElementById('editor-region-selection');
+    const shell = document.getElementById('editor-page-shell');
+    if (box) { box.style.display = 'none'; box.style.width = '0px'; box.style.height = '0px'; }
+    if (shell) shell.classList.remove('region-selecting');
+    setEditorRegionLocked(false);
+}
+
+function initEditorRegionSelection() {
+    const shell = document.getElementById('editor-page-shell');
+    const box = document.getElementById('editor-region-selection');
+    if (!shell || !box || shell.dataset.regionSelectionBound) return;
+    shell.dataset.regionSelectionBound = '1';
+    shell.addEventListener('pointerdown', e => {
+        if (editorCurrentTool !== 'text' || e.button !== 0) return;
+        // Text/image objects keep their normal drag/edit behavior. Empty canvas starts a region drag.
+        if (e.target.closest('.editor-text-layer span, .editing-input, .editor-img-box')) return;
+        e.preventDefault();
+        isSelectingEditorRegion = true;
+        editorSelectionStart = getCanvasPos(e, document.getElementById('editor-draw-canvas'));
+        shell.setPointerCapture?.(e.pointerId);
+        shell.classList.add('region-selecting');
+        setEditorRegionLocked(true);
+        box.style.display = 'block';
+        box.style.left = editorSelectionStart.x + 'px';
+        box.style.top = editorSelectionStart.y + 'px';
+        box.style.width = '0px';
+        box.style.height = '0px';
+    });
+    shell.addEventListener('pointermove', e => {
+        if (!isSelectingEditorRegion) return;
+        const pos = getCanvasPos(e, document.getElementById('editor-draw-canvas'));
+        const left = Math.min(editorSelectionStart.x, pos.x), top = Math.min(editorSelectionStart.y, pos.y);
+        box.style.left = left + 'px'; box.style.top = top + 'px';
+        box.style.width = Math.abs(pos.x - editorSelectionStart.x) + 'px';
+        box.style.height = Math.abs(pos.y - editorSelectionStart.y) + 'px';
+    });
+    shell.addEventListener('pointerup', clearEditorRegionSelection);
+    shell.addEventListener('pointercancel', clearEditorRegionSelection);
+}
 
 function setEditorTool(toolName) {
     editorCurrentTool = toolName;
@@ -2705,6 +3089,7 @@ function setEditorTool(toolName) {
     const dc = document.getElementById('editor-draw-canvas');
     if (dc) dc.style.cursor = toolName === 'text' ? 'default' : 'crosshair';
     updateBrushPreview();
+    initEditorRegionSelection();
 }
 
 function getArrowGeometry(x1, y1, x2, y2, size) {
@@ -2993,14 +3378,20 @@ async function _editorRenderPageImpl() {
                 span.style.top = `${_hy - _fs * editorScale}px`;
             }
             span.classList.add('modified');
-            span.style.setProperty('--txt-color', savedChange.color || '#000000');
-            if (savedChange.fontSize) {
+            // Khi chỉ di chuyển chữ gốc, giữ nguyên kiểu chữ và màu do PDF.js hiển thị.
+            // Chỉ áp màu/font tùy chỉnh khi người dùng thực sự sửa định dạng.
+            if (!savedChange.preserveOriginalFormatting) {
+                span.style.setProperty('--txt-color', savedChange.color || '#000000');
+            } else {
+                span.style.removeProperty('--txt-color');
+            }
+            if (!savedChange.preserveOriginalFormatting && savedChange.fontSize) {
                 span._ptSize = savedChange.fontSize;
                 span.style.fontSize = `${savedChange.fontSize * editorScale}px`;
             }
-            if (savedChange.isBold) span.classList.add('is-bold');
-            if (savedChange.isItalic) span.classList.add('is-italic');
-            applyFontToEl(span, fontKeyOf(savedChange));
+            if (!savedChange.preserveOriginalFormatting && savedChange.isBold) span.classList.add('is-bold');
+            if (!savedChange.preserveOriginalFormatting && savedChange.isItalic) span.classList.add('is-italic');
+            if (!savedChange.preserveOriginalFormatting) applyFontToEl(span, fontKeyOf(savedChange));
             maskOriginalPosition(index, item, tx);
         }
         enableDragAndEdit(span, item, index, tx);
@@ -3507,6 +3898,113 @@ function applySelHighlight() {
     });
 })();
 
+// Chọn nhiều dòng bằng cách kéo khung trống; chỉ chọn các dòng nằm HOÀN TOÀN trong khung.
+// Kéo một dòng đã chọn sẽ di chuyển cả nhóm, không làm mất font/màu gốc.
+(function bindTextRegionSelection() {
+    const layer = document.getElementById('editor-text-layer');
+    if (!layer) return;
+    let selected = new Set();
+    let start = null;
+    let rect = null;
+    let groupDragging = false;
+    let dragStart = null;
+    let initial = [];
+
+    function getBox(el) {
+        const l = parseFloat(el.style.left) || 0;
+        const t = parseFloat(el.style.top) || 0;
+        return { left:l, top:t, right:l + el.offsetWidth, bottom:t + el.offsetHeight };
+    }
+    function setSelected(nodes) {
+        selected = new Set(nodes);
+        layer.querySelectorAll('span[data-tidx]').forEach(el => el.classList.toggle('region-selected', selected.has(el)));
+    }
+    function ensureRect() {
+        if (rect) return rect;
+        rect = document.createElement('div');
+        rect.className = 'editor-region-select';
+        rect.style.cssText = 'position:absolute;border:1px dashed #0078d4;background:rgba(0,120,212,.12);z-index:200;pointer-events:none;display:none;';
+        layer.appendChild(rect);
+        return rect;
+    }
+    layer.addEventListener('mousedown', e => {
+        if (e.button !== 0 || editorCurrentTool !== 'text') return;
+        const target = e.target.closest ? e.target.closest('span[data-tidx]') : null;
+        if (selected.size && target && selected.has(target)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            groupDragging = true;
+            dragStart = { x:e.clientX, y:e.clientY };
+            initial = Array.from(selected).map(el => ({el, left:parseFloat(el.style.left)||0, top:parseFloat(el.style.top)||0}));
+            document.body.style.userSelect = 'none';
+            const move = ev => {
+                const dx = ev.clientX - dragStart.x, dy = ev.clientY - dragStart.y;
+                if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+                initial.forEach(o => {
+                    o.el.style.left = (o.left + dx) + 'px';
+                    o.el.style.top = (o.top + dy) + 'px';
+                    o.el.classList.add('modified');
+                    o.el.classList.add('dragging');
+                    const ix = Number(o.el.getAttribute('data-tidx'));
+                    if (o.el._item) {
+                        const tx = pdfjsLib.Util.transform(editorViewport.transform, o.el._item.transform);
+                        maskOriginalPosition(ix, o.el._item, tx);
+                    }
+                });
+            };
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.body.style.userSelect = '';
+                groupDragging = false;
+                initial.forEach(o => {
+                    o.el.classList.remove('dragging');
+                    const ix = Number(o.el.getAttribute('data-tidx'));
+                    if (o.el._item) savePositionAndText(o.el, o.el._item, ix);
+                });
+                // Giữ nguyên các node đang chọn để có thể kéo cả nhóm thêm lần nữa.
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            return;
+        }
+        // Bắt đầu khung chọn khi nhấn vào vùng trống, không phải chữ/ảnh.
+        if (target || (e.target.closest && e.target.closest('.editor-img-box')) || e.target.closest('.editing-input')) {
+            if (!e.shiftKey && !target) setSelected([]);
+            return;
+        }
+        const bounds = layer.getBoundingClientRect();
+        start = { x:e.clientX - bounds.left, y:e.clientY - bounds.top };
+        const box = ensureRect();
+        box.style.left = start.x + 'px'; box.style.top = start.y + 'px';
+        box.style.width = '0px'; box.style.height = '0px'; box.style.display = 'block';
+        if (!e.shiftKey) setSelected([]);
+        e.preventDefault();
+        const move = ev => {
+            const x = ev.clientX - bounds.left, y = ev.clientY - bounds.top;
+            box.style.left = Math.min(start.x,x) + 'px';
+            box.style.top = Math.min(start.y,y) + 'px';
+            box.style.width = Math.abs(x-start.x) + 'px';
+            box.style.height = Math.abs(y-start.y) + 'px';
+        };
+        const up = ev => {
+            document.removeEventListener('mousemove', move);
+            document.removeEventListener('mouseup', up);
+            const x = ev.clientX - bounds.left, y = ev.clientY - bounds.top;
+            const r = {left:Math.min(start.x,x), top:Math.min(start.y,y), right:Math.max(start.x,x), bottom:Math.max(start.y,y)};
+            box.style.display = 'none';
+            const inside = Array.from(layer.querySelectorAll('span[data-tidx]')).filter(el => {
+                const b = getBox(el);
+                return b.left >= r.left && b.top >= r.top && b.right <= r.right && b.bottom <= r.bottom && (el.textContent || '').trim();
+            });
+            setSelected(e.shiftKey ? [...selected, ...inside] : inside);
+            start = null;
+        };
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', up);
+    });
+})();
+
 function editorCopySelection() {
     const sel = editorSel;
     if (!sel || sel.page !== editorPage) return false;
@@ -3897,14 +4395,18 @@ function savePositionAndText(span, originalItem, index) {
     const existingIndex = modifiedTexts.findIndex(item => item.key === key);
     const isBold = span.classList.contains('is-bold');
     const isItalic = span.classList.contains('is-italic');
-    const prev = existingIndex !== -1 ? modifiedTexts[existingIndex] : null;
-    const fontKey = fontKeyOf(prev);
-    applyFontToEl(span, fontKey);
-    const cols = prev && prev.color ? {
+  const prev = existingIndex !== -1 ? modifiedTexts[existingIndex] : null;
+  const fontKey = prev ? fontKeyOf(prev) : fontKeyOf({ fontFamily: span.style.fontFamily });
+  // Di chuyển đơn thuần không được chuyển font/màu gốc sang font mặc định.
+  // Nếu trước đó người dùng đã sửa font/màu thì tiếp tục giữ định dạng chỉnh sửa đó.
+  const preserveOriginalFormatting = prev ? !!prev.preserveOriginalFormatting : true;
+  if (!preserveOriginalFormatting) applyFontToEl(span, fontKey);
+  const cols = prev && prev.color ? {
         color: prev.color,
         bg: prev.bgColor
     } : sampleTextColors(originalItem);
-    span.style.setProperty('--txt-color', cols.color);
+  if (preserveOriginalFormatting) span.style.removeProperty('--txt-color');
+  else span.style.setProperty('--txt-color', cols.color);
     const changeData = {
         key: key, _seq: ++editorSeq,
         page: editorPage,
@@ -3923,7 +4425,8 @@ function savePositionAndText(span, originalItem, index) {
         htmlTop: htmlTop,
         isBold: isBold,
         isItalic: isItalic,
-        fontFamily: fontKey
+        fontFamily: fontKey,
+        preserveOriginalFormatting: preserveOriginalFormatting
     };
     if (existingIndex !== -1) {
         changeData.text = modifiedTexts[existingIndex].text;
@@ -3946,12 +4449,17 @@ function makeEditable(span, originalItem, index, tx) {
     input.style.top = span.style.top;
     input.style.fontSize = span.style.fontSize;
     const _prevMod = modifiedTexts.find(m => m.key === `${editorPage}_${index}`);
-    let editFont = fontKeyOf(_prevMod);
+    let editFont = _prevMod && !_prevMod.preserveOriginalFormatting ? fontKeyOf(_prevMod) : fontKeyOf({ fontFamily: span.style.fontFamily });
+    let fontWasChanged = !!(_prevMod && !_prevMod.preserveOriginalFormatting);
+    const originalCssFont = span.style.fontFamily || fontCss(editFont);
     const fontSel = document.getElementById('editor-text-font');
-    if (fontSel) fontSel.value = editFont;
-    applyFontToEl(input, editFont);
+    if (fontSel) fontSel.value = fontWasChanged ? editFont : '';
+    input.style.fontFamily = originalCssFont;
+    input.style.fontWeight = span.classList.contains('is-bold') ? '700' : '400';
+    input.style.fontStyle = span.classList.contains('is-italic') ? 'italic' : 'normal';
     const fitWidth = () => {
-        _measureCtx.font = `${input.classList.contains('is-italic') ? 'italic ' : ''}${input.classList.contains('is-bold') ? 'bold ' : ''}${parseFloat(input.style.fontSize)}px ${fontCss(editFont)}`;
+        const measureFont = fontWasChanged ? fontCss(editFont) : originalCssFont;
+        _measureCtx.font = `${input.classList.contains('is-italic') ? 'italic ' : ''}${input.classList.contains('is-bold') ? 'bold ' : ''}${parseFloat(input.style.fontSize)}px ${measureFont}`;
         const w = _measureCtx.measureText(input.value || ' ').width;
         input.style.width = Math.max(span.offsetWidth, Math.ceil(w)) + 30 + 'px';
     };
@@ -3987,6 +4495,7 @@ function makeEditable(span, originalItem, index, tx) {
     sizeInput.addEventListener('blur', endPick);
     const onFont = () => {
         editFont = fontKeyOf({ fontFamily: fontSel.value });
+        fontWasChanged = true;
         applyFontToEl(input, editFont);
         fitWidth();
         endPick();
@@ -4039,7 +4548,7 @@ function makeEditable(span, originalItem, index, tx) {
         const isItalic = input.classList.contains('is-italic');
         input.remove();
         span.style.setProperty('--txt-color', editColor);
-        applyFontToEl(span, editFont);
+        if (fontWasChanged) applyFontToEl(span, editFont);
         span._ptSize = editSize;
         span.style.fontSize = `${editSize * editorScale}px`;
         span.style.top = `${baselineVp - editSize * editorScale}px`;
@@ -4075,7 +4584,8 @@ function makeEditable(span, originalItem, index, tx) {
             htmlTop: htmlTop,
             isBold: isBold,
             isItalic: isItalic,
-            fontFamily: editFont
+            fontFamily: editFont,
+            preserveOriginalFormatting: !fontWasChanged
         };
         if (existingIndex !== -1) {
             modifiedTexts[existingIndex] = changeData;
@@ -4152,7 +4662,14 @@ async function getUnicodeFontBytes(style = "regular") {
 }
 
 async function editorExportPDF(captureCb) {
-    if (!editorPdfDataBytes) return;
+    if (!editorPdfDataBytes) {
+        alert('Vui lòng mở một file PDF trước khi xuất.');
+        return;
+    }
+    if (typeof PDFLib === 'undefined' || !PDFLib.PDFDocument) {
+        alert('Thư viện PDF chưa tải xong. Vui lòng tải lại trang hoặc kiểm tra kết nối mạng.');
+        return;
+    }
     if (!captureCb) logAction("edit_pdf");
     const btn = document.getElementById('editor-download-btn');
     btn.textContent = 'Đang xử lý xuất PDF...';
@@ -4196,8 +4713,13 @@ async function editorExportPDF(captureCb) {
                 subset: true
             });
         } else {
+            const hasVietnameseText = modifiedTexts.concat(addedTexts).some(o =>
+                /[À-ỹĐđ]/.test(String(o.text || ''))
+            );
+            if (hasVietnameseText) {
+                throw new Error('Không tải được font Unicode nên chưa thể xuất an toàn: văn bản tiếng Việt có thể mất dấu. Hãy thử lại khi có mạng hoặc kiểm tra thư mục fonts/ (Roboto-Regular.ttf, Roboto-Bold.ttf, Roboto-Italic.ttf, Roboto-BoldItalic.ttf).');
+            }
             usingStdFont = true;
-            alert("Cảnh báo: Không tải được font Roboto. Chữ tiếng Việt sẽ bị bỏ dấu khi xuất PDF.");
             regularFont = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.Helvetica);
             boldFont = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaBold);
             italicFont = await pdfDoc.embedStandardFont(PDFLib.StandardFonts.HelveticaOblique);
@@ -4254,6 +4776,7 @@ async function editorExportPDF(captureCb) {
         modifiedTexts.forEach(change => {
             try {
                 const pageObj = pages[change.page - 1];
+                if (!pageObj) throw new Error('Trang PDF không tồn tại: ' + change.page);
                 const h = change.origHeight || change.fontSize;
                 const pad = Math.max(2, h * 0.15);
                 const c = hexToRgb(change.bgColor || '#ffffff');
@@ -4313,6 +4836,7 @@ async function editorExportPDF(captureCb) {
         modifiedTexts.forEach(change => {
             try {
                 const pageObj = pages[change.page - 1];
+                if (!pageObj) throw new Error('Trang PDF không tồn tại: ' + change.page);
                 const targetFont = pickFont(change);
                 const rawText = usingStdFont ? removeVietnameseTones(change.text) : change.text;
                 const c = hexToRgb(change.color || '#000000');
@@ -4328,6 +4852,7 @@ async function editorExportPDF(captureCb) {
         addedTexts.forEach(a => {
             try {
                 const pageObj = pages[a.page - 1];
+                if (!pageObj) throw new Error('Trang PDF không tồn tại: ' + a.page);
                 const f = pickFont(a);
                 const c = hexToRgb(a.color || '#000000');
                 const raw = usingStdFont ? removeVietnameseTones(a.text) : a.text;
@@ -4336,10 +4861,13 @@ async function editorExportPDF(captureCb) {
         });
         editorShapes.forEach(shape => {
             const pageObj = pages[shape.page - 1];
+            if (!pageObj) { failedItems++; console.error('Không tìm thấy trang cho hình vẽ:', shape.page); return; }
             const rgb = hexToRgb(shape.color);
             const pdfLibColor = PDFLib.rgb(rgb.r, rgb.g, rgb.b);
-            const finalThickness = shape.size / editorScale;
             const vp = shape.vp || editorViewport;
+            // Nét vẽ phải dùng tỷ lệ viewport tại thời điểm vẽ, không phải mức zoom hiện tại.
+            const shapeScale = (vp && Number.isFinite(vp.scale) && vp.scale > 0) ? vp.scale : editorScale;
+            const finalThickness = shape.size / shapeScale;
             const [pStartX, pStartY] = vp.convertToPdfPoint(shape.startX, shape.startY);
             const [pEndX, pEndY] = vp.convertToPdfPoint(shape.endX, shape.endY);
             if (shape.type === 'line') {
@@ -4441,12 +4969,12 @@ async function editorExportPDF(captureCb) {
         link.click();
         setTimeout(() => URL.revokeObjectURL(link.href), 60000);
         const notes = [];
-        if (unsupportedChars.size) notes.push('Các ký tự font không hỗ trợ đã được thay bằng "?": ' + Array.from(unsupportedChars).join(' '));
+        if (unsupportedChars.size) notes.push('Các ký tự font kh��ng hỗ trợ đã được thay bằng "?": ' + Array.from(unsupportedChars).join(' '));
         if (failedItems) notes.push(failedItems + ' mục chữ không vẽ được (xem Console F12).');
         if (notes.length) setTimeout(() => alert('Đã xuất PDF, nhưng lưu ý:\n' + notes.join('\n')), 300);
     } catch (error) {
         console.error(error);
-        alert('Lỗi xuất file: ' + error.message);
+        alert('Lỗi xuất file: ' + ((error && error.message) ? error.message : String(error)));
     } finally {
         btn.textContent = '💾 XUẤT FILE ĐÃ SỬA';
         btn.disabled = false;
@@ -4935,7 +5463,7 @@ function printAllEditorPages() {
         }
         // Mở lại đúng tab đang dùng
         var tabId = state.tab || 'tab-main';
-        var btn = document.querySelector('.tab-btn[onclick*="' + tabId + '"]');
+        var btn = document.querySelector('.tab-btn[onclick*="\'' + tabId + '\'"], .menu-item[onclick*="\'' + tabId + '\'"]');
         if (btn && tabId !== 'tab-main') switchTab(tabId, btn);
         if (failed) throw new Error('Khôi phục dở dang');
     }
@@ -5192,7 +5720,7 @@ self.onmessage = async (ev) => {
                     const tc = await (await pdf.getPage(p)).getTextContent();
                     tc.items.forEach(x => { chars += (x.str || '').trim().length; });
                 }
-                if (!chars) it.warn = 'PDF này có vẻ là bản scan (không có chữ thật). Chữ sẽ được giữ dưới dạng ảnh, không sửa được trong Word.';
+                if (!chars) it.warn = 'PDF này có vẻ là bản scan (không có chữ thật). Chữ sẽ được giữ dưới dạng ảnh, không sửa được trong Word. Hãy chạy Chuyển đổi → OCR trước để có chữ thật.';
             } catch (e) {
                 it.warn = 'Không đọc được thông tin file (có thể bị đặt mật khẩu).';
             }
@@ -5888,7 +6416,7 @@ self.onmessage = async (ev) => {
                     const tc = await (await pdf.getPage(p)).getTextContent();
                     tc.items.forEach(x => { chars += (x.str || '').trim().length; });
                 }
-                if (!chars) it.warn = 'PDF này có vẻ là bản scan (không có chữ thật) nên không trích được bảng. Cần OCR trước.';
+                if (!chars) it.warn = 'PDF này có vẻ là bản scan (không có chữ thật) nên không trích được bảng. Hãy chạy Chuyển đổi → OCR trước.';
             } catch (e) {
                 it.warn = 'Không đọc được thông tin file (có thể bị đặt mật khẩu).';
             }
@@ -5987,6 +6515,1104 @@ self.onmessage = async (ev) => {
 })();
 </script>
 
+<script>
+// ===================== Công cụ PDF (tách, nén, ảnh, OCR, mật khẩu, watermark, số trang, mục lục, metadata) =====================
+(function () {
+    'use strict';
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const fmtBytes = n => n > 1048576 ? (n / 1048576).toFixed(2) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+    const P = () => window.PDFLib;
+
+    const INFO = {
+        split: { hint: 'Tách một file PDF thành nhiều file nhỏ theo khoảng trang, theo số trang hoặc từng trang.', accept: 'pdf' },
+        compress: { hint: 'Giảm dung lượng PDF bằng cách nén lại ảnh bên trong và lưu gọn cấu trúc file.', accept: 'pdf' },
+        pdf2img: { hint: 'Xuất từng trang PDF thành ảnh PNG hoặc JPG.', accept: 'pdf' },
+        img2pdf: { hint: 'Ghép nhiều ảnh (JPG, PNG, WebP...) thành một file PDF.', accept: 'img' },
+        ocr: { hint: 'Nhận dạng chữ trên PDF scan, tạo PDF chọn / tìm / copy chữ được. Chạy hoàn toàn trên máy.', accept: 'pdf' },
+        protect: { hint: 'Đặt mật khẩu mở file, giới hạn quyền in, copy, sửa; hoặc gỡ mật khẩu nếu bạn biết mật khẩu.', accept: 'pdf' },
+        meta: { hint: 'Xóa hoặc sửa thông tin ẩn trong file: tác giả, phần mềm tạo, ngày tạo...', accept: 'pdf' },
+        watermark: { hint: 'Chèn chữ hoặc ảnh mờ lên các trang (một chỗ hoặc lặp kín trang).', accept: 'pdf' },
+        pagenum: { hint: 'Thêm số trang vào chân hoặc đầu mỗi trang.', accept: 'pdf' },
+        bookmark: { hint: 'Tạo mục lục dạng bookmark (dùng ngăn điều hướng của trình đọc PDF), có thể nhiều cấp.', accept: 'pdf' }
+    };
+
+    let tool = 'split';
+    const lists = { pdf: [], img: [] };
+    let seq = 0, busy = false;
+    const curList = () => lists[INFO[tool].accept === 'img' ? 'img' : 'pdf'];
+
+    // ---------- Tiện ích ----------
+    function loadScript(urls, errMsg) {
+        return new Promise((resolve, reject) => {
+            let i = 0;
+            const next = () => {
+                if (i >= urls.length) { reject(new Error(errMsg || 'Không tải được thư viện (cần kết nối mạng)')); return; }
+                const s = document.createElement('script');
+                s.src = urls[i++];
+                s.onload = resolve;
+                s.onerror = () => { s.remove(); next(); };
+                document.head.appendChild(s);
+            };
+            next();
+        });
+    }
+    async function ensureJSZip() {
+        if (typeof JSZip !== 'undefined') return;
+        await loadScript(['https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'], 'Không tải được thư viện nén ZIP');
+    }
+    function parsePages(str, total) {
+        str = (str || '').trim();
+        if (!str) return null;
+        const set = new Set();
+        str.split(/[,;]/).forEach(part => {
+            part = part.trim();
+            const m = part.match(/^(\d+)\s*-\s*(\d+)$/);
+            if (m) {
+                let a = +m[1], b = +m[2];
+                if (a > b) { const t = a; a = b; b = t; }
+                for (let i = a; i <= b; i++) if (i >= 1 && (!total || i <= total)) set.add(i - 1);
+            } else if (/^\d+$/.test(part)) {
+                const n = +part;
+                if (n >= 1 && (!total || n <= total)) set.add(n - 1);
+            }
+        });
+        return Array.from(set).sort((a, b) => a - b);
+    }
+    const baseName = n => n.replace(/\.[^.]+$/, '');
+    const pad = (i, n) => String(i).padStart(String(n).length, '0');
+    function saveBlob(blob, name) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    }
+    const toBlob = (d, name) => d instanceof Blob ? d : new Blob([d], { type: /\.pdf$/i.test(name) ? 'application/pdf' : /\.txt$/i.test(name) ? 'text/plain;charset=utf-8' : 'application/octet-stream' });
+    function hexRgb(hex) {
+        const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+        const v = m ? parseInt(m[1], 16) : 0;
+        return P().rgb(((v >> 16) & 255) / 255, ((v >> 8) & 255) / 255, (v & 255) / 255);
+    }
+    function setProgress(pct, msg) {
+        $('tl-progress-wrap').style.display = 'block';
+        if (pct !== null && pct !== undefined) $('tl-progress-bar').style.width = Math.max(0, Math.min(100, pct)) + '%';
+        if (msg !== undefined) $('tl-status').textContent = msg;
+    }
+    function toBytes(it) { return new Uint8Array(it.bytes.slice(0)); }
+    async function loadLib(it, extra) {
+        try {
+            return await P().PDFDocument.load(toBytes(it), Object.assign({ updateMetadata: false }, extra || {}));
+        } catch (e) {
+            if (/encrypt/i.test(e && e.message)) throw new Error('File đang được mã hóa hoặc có hạn chế quyền. Hãy dùng "Đặt / gỡ mật khẩu" → Gỡ mật khẩu trước.');
+            throw new Error('Không đọc được file PDF (' + ((e && e.message) || e) + ')');
+        }
+    }
+    async function openPdfJs(it) {
+        return await pdfjsLib.getDocument({ data: toBytes(it) }).promise;
+    }
+    const canvasBlob = (cv, type, q) => new Promise(r => cv.toBlob(r, type, q));
+    async function getFontLib(pdf, bold) {
+        pdf.registerFontkit(window.fontkit);
+        const bytes = await getUnicodeFontBytes(bold ? 'bold' : 'regular');
+        return await pdf.embedFont(bytes, { subset: true });
+    }
+    function safeText(font, s) {
+        let set = null;
+        try { set = new Set(font.getCharacterSet()); } catch (e) {}
+        if (!set) return s;
+        let out = '';
+        for (const ch of s) { const cp = ch.codePointAt(0); if (cp === 32 || set.has(cp)) out += ch; }
+        return out;
+    }
+    // Vẽ chữ tại toạ độ "hiển thị" (X từ trái, Y từ dưới của trang đã xoay), góc th (độ, ngược chiều kim đồng hồ)
+    function pageGeo(page) {
+        const mb = page.getMediaBox();
+        const R = ((page.getRotation().angle % 360) + 360) % 360;
+        const Wu = mb.width, Hu = mb.height;
+        const swap = R === 90 || R === 270;
+        return { mb, R, Wu, Hu, W: swap ? Hu : Wu, H: swap ? Wu : Hu };
+    }
+    function toUser(g, X, Y, th) {
+        let x, y;
+        if (g.R === 0) { x = X; y = Y; }
+        else if (g.R === 90) { x = g.Wu - Y; y = X; }
+        else if (g.R === 180) { x = g.Wu - X; y = g.Hu - Y; }
+        else { x = Y; y = g.Hu - X; }
+        return { x: x + g.mb.x, y: y + g.mb.y, ang: th + g.R };
+    }
+    const rotv = (a, b, deg) => { const r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r); return [a * c - b * s, a * s + b * c]; };
+
+    // ---------- Engine PyMuPDF (chỉ dùng cho mật khẩu) ----------
+    const PY_PW = `
+import pymupdf, json
+def pw_apply(opts_json):
+    o = json.loads(opts_json)
+    doc = pymupdf.open('/pw_in.pdf')
+    try:
+        if doc.needs_pass:
+            if not doc.authenticate(o.get('pw') or ''):
+                return json.dumps({'ok': False, 'err': 'badpw'})
+        if o['mode'] == 'remove':
+            doc.save('/pw_out.pdf', encryption=pymupdf.PDF_ENCRYPT_NONE, garbage=3, deflate=True)
+        else:
+            perm = 0
+            if o.get('print'): perm |= pymupdf.PDF_PERM_PRINT | pymupdf.PDF_PERM_PRINT_HQ
+            if o.get('copy'): perm |= pymupdf.PDF_PERM_COPY | pymupdf.PDF_PERM_ACCESSIBILITY
+            if o.get('edit'): perm |= pymupdf.PDF_PERM_MODIFY | pymupdf.PDF_PERM_ANNOTATE | pymupdf.PDF_PERM_FORM | pymupdf.PDF_PERM_ASSEMBLE
+            doc.save('/pw_out.pdf', encryption=pymupdf.PDF_ENCRYPT_AES_256, user_pw=o.get('user') or '', owner_pw=o.get('owner') or o.get('user') or 'owner', permissions=perm, garbage=3, deflate=True)
+        return json.dumps({'ok': True})
+    finally:
+        doc.close()
+`;
+    const PW_WORKER = `
+let inst = null, py = null;
+self.onmessage = async (ev) => {
+    const m = ev.data;
+    try {
+        if (m.type === 'load') {
+            const mod = await import(m.base + 'dist/index.js');
+            inst = new mod.PyMuPDF({ assetPath: m.base + 'assets/', ghostscriptUrl: '' });
+            self.postMessage({ type: 'status', msg: 'Đang khởi động bộ xử lý PDF (lần đầu hơi lâu)...' });
+            await inst.load();
+            py = await inst.getPyodide();
+            py.runPython(m.setup);
+            self.postMessage({ type: 'loaded' });
+        } else if (m.type === 'pw') {
+            let out = '', bytes = null;
+            try {
+                py.FS.writeFile('/pw_in.pdf', new Uint8Array(m.bytes));
+                out = py.globals.get('pw_apply')(JSON.stringify(m.opts));
+                if (JSON.parse(out).ok) bytes = py.FS.readFile('/pw_out.pdf');
+            } finally {
+                try { py.FS.unlink('/pw_in.pdf'); } catch (e) {}
+                try { py.FS.unlink('/pw_out.pdf'); } catch (e) {}
+            }
+            self.postMessage({ type: 'done', id: m.id, json: out, bytes: bytes }, bytes ? [bytes.buffer] : []);
+        }
+    } catch (e) {
+        self.postMessage({ type: 'error', id: m.id, message: String((e && e.message) || e) });
+    }
+};`;
+    let worker = null, workerLoad = null, workerBase = '';
+    const listeners = new Set();
+    function ensureWorker() {
+        let base = ($('tl-base').value || '').trim() || 'https://cdn.jsdelivr.net/npm/@bentopdf/pymupdf-wasm@0.11.16/';
+        if (!base.endsWith('/')) base += '/';
+        if (workerLoad && workerBase === base) return workerLoad;
+        if (worker) { try { worker.terminate(); } catch (e) {} }
+        workerBase = base;
+        worker = new Worker(URL.createObjectURL(new Blob([PW_WORKER], { type: 'application/javascript' })));
+        worker.onmessage = ev => listeners.forEach(fn => fn(ev.data));
+        workerLoad = new Promise((resolve, reject) => {
+            const fn = m => {
+                if (m.type === 'status') setProgress(null, m.msg);
+                else if (m.type === 'loaded') { listeners.delete(fn); resolve(); }
+                else if (m.type === 'error' && m.id === undefined) { listeners.delete(fn); reject(new Error(m.message)); }
+            };
+            listeners.add(fn);
+            worker.onerror = e => { listeners.delete(fn); reject(new Error(e.message || 'Không khởi động được bộ xử lý PDF')); };
+            worker.postMessage({ type: 'load', base: base, setup: PY_PW });
+        });
+        workerLoad.catch(() => { workerLoad = null; });
+        return workerLoad;
+    }
+    function workerCall(bytes, opts) {
+        return new Promise((resolve, reject) => {
+            const id = ++seq;
+            const fn = m => {
+                if (m.id !== id) return;
+                listeners.delete(fn);
+                if (m.type === 'done') resolve(m); else reject(new Error(m.message));
+            };
+            listeners.add(fn);
+            const buf = bytes.slice(0);
+            worker.postMessage({ type: 'pw', id: id, bytes: buf, opts: opts }, [buf]);
+        });
+    }
+
+    // ---------- Các công cụ ----------
+    const TOOLS = {};
+
+    TOOLS.split = {
+        read() {
+            const mode = $('tl-split-mode').value;
+            const o = { mode, ranges: $('tl-split-ranges').value.trim(), n: Math.max(1, parseInt($('tl-split-n').value, 10) || 1) };
+            if ((mode === 'ranges' || mode === 'extract') && !o.ranges) throw new Error('Hãy nhập trang hoặc khoảng trang cần tách.');
+            return o;
+        },
+        async run(it, o) {
+            const src = await loadLib(it);
+            const n = src.getPageCount();
+            const base = baseName(it.name);
+            const groups = [];
+            if (o.mode === 'ranges') {
+                o.ranges.split(/[,;]/).forEach(part => {
+                    const idx = parsePages(part, n);
+                    if (idx && idx.length) groups.push({ idx, label: part.trim().replace(/\s+/g, '') });
+                });
+            } else if (o.mode === 'every') {
+                for (let i = 0; i < n; i += o.n) {
+                    const idx = []; for (let j = i; j < Math.min(n, i + o.n); j++) idx.push(j);
+                    groups.push({ idx, label: 'trang' + (i + 1) + '-' + (i + idx.length) });
+                }
+            } else if (o.mode === 'each') {
+                for (let i = 0; i < n; i++) groups.push({ idx: [i], label: 'trang' + pad(i + 1, n) });
+            } else {
+                const idx = parsePages(o.ranges, n);
+                if (idx && idx.length) groups.push({ idx, label: 'trich' });
+            }
+            if (!groups.length) throw new Error('Không có trang hợp lệ (file có ' + n + ' trang).');
+            const outs = [];
+            for (let g = 0; g < groups.length; g++) {
+                setProgress(((g + 1) / groups.length) * 100, 'Đang tách ' + (g + 1) + '/' + groups.length + '...');
+                const out = await P().PDFDocument.create();
+                const pgs = await out.copyPages(src, groups[g].idx);
+                pgs.forEach(p => out.addPage(p));
+                outs.push({ name: base + '_' + groups[g].label + '.pdf', data: await out.save() });
+                await new Promise(r => setTimeout(r, 0));
+            }
+            return outs;
+        }
+    };
+
+    // ----- Nén -----
+    const COMP = {
+        light: { q: 0.85, side: 2600 },
+        balanced: { q: 0.72, side: 1800 },
+        strong: { q: 0.55, side: 1300 },
+        raster: { dpi: 110, q: 0.6 }
+    };
+    function unpng(data, rowLen, bpp, rows) {
+        const out = new Uint8Array(rowLen * rows);
+        let ip = 0;
+        for (let r = 0; r < rows; r++) {
+            const ft = data[ip++], ro = r * rowLen, po = ro - rowLen;
+            for (let i = 0; i < rowLen; i++) {
+                const x = data[ip++];
+                const a = i >= bpp ? out[ro + i - bpp] : 0;
+                const b = r > 0 ? out[po + i] : 0;
+                const c = (r > 0 && i >= bpp) ? out[po + i - bpp] : 0;
+                let v;
+                switch (ft) {
+                    case 0: v = x; break;
+                    case 1: v = x + a; break;
+                    case 2: v = x + b; break;
+                    case 3: v = x + ((a + b) >> 1); break;
+                    case 4: { const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c); v = x + ((pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c)); break; }
+                    default: v = x;
+                }
+                out[ro + i] = v & 255;
+            }
+        }
+        return out;
+    }
+    async function inflate(u8) {
+        const ds = new DecompressionStream('deflate');
+        const w = ds.writable.getWriter();
+        w.write(u8); w.close();
+        return new Uint8Array(await new Response(ds.readable).arrayBuffer());
+    }
+    async function recompressImages(pdf, cfg, onProg) {
+        const { PDFName, PDFRawStream, PDFNumber, PDFArray, PDFDict, PDFRef } = P();
+        const ctx = pdf.context;
+        const N = n => PDFName.of(n);
+        const entries = [];
+        for (const [ref, obj] of ctx.enumerateIndirectObjects()) {
+            if (obj instanceof PDFRawStream && obj.dict.get(N('Subtype')) === N('Image')) entries.push([ref, obj]);
+        }
+        let replaced = 0, saved = 0;
+        for (let k = 0; k < entries.length; k++) {
+            const [ref, st] = entries[k];
+            onProg(k / Math.max(1, entries.length));
+            try {
+                const d = st.dict;
+                const lk = key => d.lookup(N(key));
+                if (lk('ImageMask') === P().PDFBool.True || d.has(N('Mask')) || d.has(N('Decode'))) continue;
+                const w = lk('Width') && lk('Width').asNumber(), h = lk('Height') && lk('Height').asNumber();
+                const bpc = lk('BitsPerComponent') && lk('BitsPerComponent').asNumber();
+                if (!w || !h || bpc !== 8) continue;
+                const smaskRef = d.get(N('SMask'));
+                if (smaskRef) {
+                    const sm = d.lookup(N('SMask'));
+                    if (sm instanceof PDFRawStream && sm.dict.has(N('Matte'))) continue;
+                }
+                // Không gian màu
+                let cs = lk('ColorSpace'), ncomp = 0;
+                if (cs instanceof PDFName) {
+                    ncomp = cs === N('DeviceRGB') ? 3 : cs === N('DeviceGray') ? 1 : 0;
+                } else if (cs instanceof PDFArray) {
+                    const nm = cs.lookup(0);
+                    if (nm === N('ICCBased')) {
+                        const prof = cs.lookup(1);
+                        const nn = prof && prof.dict && prof.dict.lookup(N('N'));
+                        ncomp = nn ? nn.asNumber() : 0;
+                    } else if (nm === N('CalRGB')) ncomp = 3;
+                    else if (nm === N('CalGray')) ncomp = 1;
+                }
+                if (ncomp !== 1 && ncomp !== 3) continue;
+                // Bộ lọc
+                let f = lk('Filter'), filters = [];
+                if (f instanceof PDFName) filters = [f];
+                else if (f instanceof PDFArray) for (let i = 0; i < f.size(); i++) filters.push(f.lookup(i));
+                if (filters.length !== 1) continue;
+                const raw = st.getContents();
+                if (raw.length < 12000 || w * h < 40000) continue;
+                let source; // ImageBitmap hoặc canvas
+                if (filters[0] === N('DCTDecode')) {
+                    source = await createImageBitmap(new Blob([raw], { type: 'image/jpeg' }));
+                } else if (filters[0] === N('FlateDecode')) {
+                    let data = await inflate(raw);
+                    let dp = lk('DecodeParms');
+                    if (dp instanceof PDFArray) dp = dp.lookup(0);
+                    let pred = 1;
+                    if (dp instanceof PDFDict) { const pv = dp.lookup(N('Predictor')); pred = pv ? pv.asNumber() : 1; }
+                    const rowLen = w * ncomp;
+                    if (pred >= 10) {
+                        if (data.length < (rowLen + 1) * h) continue;
+                        data = unpng(data, rowLen, ncomp, h);
+                    } else if (pred > 1) continue;
+                    if (data.length < rowLen * h) continue;
+                    const cv0 = document.createElement('canvas');
+                    cv0.width = w; cv0.height = h;
+                    const c0 = cv0.getContext('2d');
+                    const im = c0.createImageData(w, h);
+                    const px = im.data;
+                    if (ncomp === 3) { for (let i = 0, j = 0, e = w * h; i < e; i++, j += 4) { px[j] = data[i * 3]; px[j + 1] = data[i * 3 + 1]; px[j + 2] = data[i * 3 + 2]; px[j + 3] = 255; } }
+                    else { for (let i = 0, j = 0, e = w * h; i < e; i++, j += 4) { px[j] = px[j + 1] = px[j + 2] = data[i]; px[j + 3] = 255; } }
+                    c0.putImageData(im, 0, 0);
+                    source = cv0;
+                } else continue;
+                const sw = source.width, sh = source.height;
+                const sc = Math.min(1, cfg.side / Math.max(sw, sh));
+                const tw = Math.max(1, Math.round(sw * sc)), th = Math.max(1, Math.round(sh * sc));
+                const cv = document.createElement('canvas');
+                cv.width = tw; cv.height = th;
+                const c = cv.getContext('2d');
+                c.fillStyle = '#fff'; c.fillRect(0, 0, tw, th);
+                c.imageSmoothingQuality = 'high';
+                c.drawImage(source, 0, 0, tw, th);
+                if (source.close) source.close();
+                const blob = await canvasBlob(cv, 'image/jpeg', cfg.q);
+                cv.width = cv.height = 1;
+                if (!blob) continue;
+                const nb = new Uint8Array(await blob.arrayBuffer());
+                if (nb.length > raw.length * 0.92) continue;
+                const nd = { Type: 'XObject', Subtype: 'Image', Width: tw, Height: th, ColorSpace: 'DeviceRGB', BitsPerComponent: 8, Filter: 'DCTDecode' };
+                if (smaskRef) nd.SMask = smaskRef;
+                ctx.assign(ref, ctx.stream(nb, nd));
+                replaced++; saved += raw.length - nb.length;
+            } catch (e) { /* bỏ qua ảnh không xử lý được */ }
+        }
+        return { replaced, saved, total: entries.length };
+    }
+    TOOLS.compress = {
+        read() { return { level: $('tl-comp-level').value }; },
+        async run(it, o) {
+            const orig = it.bytes.byteLength;
+            const base = baseName(it.name);
+            let outBytes, note;
+            if (o.level === 'raster') {
+                const cfg = COMP.raster;
+                const doc = await openPdfJs(it);
+                const out = await P().PDFDocument.create();
+                for (let i = 1; i <= doc.numPages; i++) {
+                    setProgress((i / doc.numPages) * 100, 'Đang nén trang ' + i + '/' + doc.numPages + '...');
+                    const page = await doc.getPage(i);
+                    const v1 = page.getViewport({ scale: 1 });
+                    const vp = page.getViewport({ scale: cfg.dpi / 72 });
+                    const cv = document.createElement('canvas');
+                    cv.width = Math.ceil(vp.width); cv.height = Math.ceil(vp.height);
+                    const c = cv.getContext('2d');
+                    c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height);
+                    await page.render({ canvasContext: c, viewport: vp }).promise;
+                    const blob = await canvasBlob(cv, 'image/jpeg', cfg.q);
+                    const img = await out.embedJpg(new Uint8Array(await blob.arrayBuffer()));
+                    const pg = out.addPage([v1.width, v1.height]);
+                    pg.drawImage(img, { x: 0, y: 0, width: v1.width, height: v1.height });
+                    cv.width = cv.height = 1;
+                    page.cleanup();
+                }
+                doc.destroy();
+                outBytes = await out.save({ useObjectStreams: true });
+                note = 'Đã chuyển trang thành ảnh';
+            } else {
+                const pdf = await loadLib(it);
+                const r = await recompressImages(pdf, COMP[o.level], f => setProgress(f * 90, 'Đang nén ảnh trong file...'));
+                outBytes = await pdf.save({ useObjectStreams: true });
+                note = r.replaced + '/' + r.total + ' ảnh được nén lại';
+            }
+            if (outBytes.length >= orig) {
+                it.note = 'Không giảm được dung lượng, giữ nguyên file gốc (' + fmtBytes(orig) + ').';
+                return [{ name: base + '_goc.pdf', data: new Uint8Array(it.bytes.slice(0)), skipDownload: true }];
+            }
+            it.note = fmtBytes(orig) + ' → ' + fmtBytes(outBytes.length) + ' (giảm ' + Math.round((1 - outBytes.length / orig) * 100) + '%). ' + note + '.';
+            return [{ name: base + '_nen.pdf', data: outBytes }];
+        }
+    };
+
+    TOOLS.pdf2img = {
+        read() { return { fmt: $('tl-p2i-fmt').value, dpi: +$('tl-p2i-dpi').value, pages: $('tl-p2i-pages').value }; },
+        async run(it, o) {
+            const doc = await openPdfJs(it);
+            const n = doc.numPages;
+            let pages = parsePages(o.pages, n);
+            if (!pages) { pages = []; for (let i = 0; i < n; i++) pages.push(i); }
+            if (!pages.length) throw new Error('Không có trang hợp lệ (file có ' + n + ' trang).');
+            const ext = o.fmt === 'image/png' ? 'png' : 'jpg';
+            const base = baseName(it.name), outs = [];
+            for (let k = 0; k < pages.length; k++) {
+                setProgress(((k + 1) / pages.length) * 100, 'Đang xuất trang ' + (pages[k] + 1) + '...');
+                const page = await doc.getPage(pages[k] + 1);
+                let sc = o.dpi / 72;
+                const v0 = page.getViewport({ scale: sc });
+                const maxSide = 12000;
+                if (Math.max(v0.width, v0.height) > maxSide) sc *= maxSide / Math.max(v0.width, v0.height);
+                const vp = page.getViewport({ scale: sc });
+                const cv = document.createElement('canvas');
+                cv.width = Math.ceil(vp.width); cv.height = Math.ceil(vp.height);
+                const c = cv.getContext('2d');
+                c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height);
+                await page.render({ canvasContext: c, viewport: vp }).promise;
+                const blob = await canvasBlob(cv, o.fmt, 0.92);
+                cv.width = cv.height = 1;
+                outs.push({ name: base + '_trang' + pad(pages[k] + 1, n) + '.' + ext, data: blob });
+                page.cleanup();
+            }
+            doc.destroy();
+            return outs;
+        }
+    };
+
+    function exifOrientation(u8) {
+        try {
+            if (u8[0] !== 0xFF || u8[1] !== 0xD8) return 1;
+            let p = 2;
+            while (p < u8.length - 4) {
+                if (u8[p] !== 0xFF) return 1;
+                const mk = u8[p + 1], len = (u8[p + 2] << 8) | u8[p + 3];
+                if (mk === 0xE1 && u8[p + 4] === 0x45 && u8[p + 5] === 0x78) {
+                    const t = p + 10, le = u8[t] === 0x49;
+                    const r16 = o => le ? (u8[t + o] | (u8[t + o + 1] << 8)) : ((u8[t + o] << 8) | u8[t + o + 1]);
+                    const r32 = o => le ? (u8[t + o] | (u8[t + o + 1] << 8) | (u8[t + o + 2] << 16) | (u8[t + o + 3] << 24)) : ((u8[t + o] << 24) | (u8[t + o + 1] << 16) | (u8[t + o + 2] << 8) | u8[t + o + 3]);
+                    const ifd = r32(4), cnt = r16(ifd);
+                    for (let i = 0; i < cnt; i++) { const e = ifd + 2 + i * 12; if (r16(e) === 0x0112) return r16(e + 8); }
+                    return 1;
+                }
+                if (mk === 0xDA) return 1;
+                p += 2 + len;
+            }
+        } catch (e) {}
+        return 1;
+    }
+    TOOLS.img2pdf = {
+        all: true,
+        read() { return { size: $('tl-i2p-size').value, margin: Math.max(0, +$('tl-i2p-margin').value || 0) * 72 / 25.4 }; },
+        async run(items, o) {
+            const out = await P().PDFDocument.create();
+            for (let k = 0; k < items.length; k++) {
+                const it = items[k];
+                setProgress(((k + 1) / items.length) * 100, 'Đang thêm ảnh ' + (k + 1) + '/' + items.length + '...');
+                const u8 = new Uint8Array(it.bytes.slice(0));
+                const isJpg = u8[0] === 0xFF && u8[1] === 0xD8, isPng = u8[0] === 0x89 && u8[1] === 0x50;
+                let img;
+                if (isJpg && exifOrientation(u8) === 1) img = await out.embedJpg(u8);
+                else if (isPng) img = await out.embedPng(u8);
+                else {
+                    const bmp = await createImageBitmap(new Blob([u8], { type: it.file.type || 'image/*' }));
+                    const cv = document.createElement('canvas');
+                    cv.width = bmp.width; cv.height = bmp.height;
+                    const c = cv.getContext('2d');
+                    if (isJpg) { c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height); }
+                    c.drawImage(bmp, 0, 0);
+                    bmp.close && bmp.close();
+                    if (isJpg) img = await out.embedJpg(new Uint8Array(await (await canvasBlob(cv, 'image/jpeg', 0.95)).arrayBuffer()));
+                    else img = await out.embedPng(new Uint8Array(await (await canvasBlob(cv, 'image/png')).arrayBuffer()));
+                    cv.width = cv.height = 1;
+                }
+                const iw = img.width, ih = img.height;
+                let pw, ph;
+                if (o.size === 'fit') { pw = iw * 0.75; ph = ih * 0.75; }
+                else {
+                    const base = o.size === 'letter' ? [612, 792] : [595.28, 841.89];
+                    const land = o.size === 'a4l' ? true : o.size === 'a4p' ? false : iw > ih;
+                    pw = land ? base[1] : base[0]; ph = land ? base[0] : base[1];
+                }
+                const m = o.size === 'fit' ? 0 : o.margin;
+                const page = out.addPage([pw, ph]);
+                const aw = pw - 2 * m, ah = ph - 2 * m;
+                const sc = o.size === 'fit' ? 1 : Math.min(aw / iw, ah / ih);
+                const w = o.size === 'fit' ? pw : iw * sc, h = o.size === 'fit' ? ph : ih * sc;
+                page.drawImage(img, { x: (pw - w) / 2, y: (ph - h) / 2, width: w, height: h });
+            }
+            const nm = items.length === 1 ? baseName(items[0].name) : 'anh_gop';
+            return [{ name: nm + '.pdf', data: await out.save() }];
+        }
+    };
+
+    TOOLS.protect = {
+        read() {
+            const mode = $('tl-pw-mode').value;
+            const o = { mode };
+            if (mode === 'set') {
+                o.user = $('tl-pw-user').value; o.owner = $('tl-pw-owner').value;
+                o.print = $('tl-pw-print').checked; o.copy = $('tl-pw-copy').checked; o.edit = $('tl-pw-edit').checked;
+                if (!o.user && !o.owner) throw new Error('Hãy nhập ít nhất một mật khẩu (mật khẩu mở file hoặc mật khẩu chủ).');
+            } else o.pw = $('tl-pw-cur').value;
+            return o;
+        },
+        async run(it, o) {
+            setProgress(null, 'Đang khởi động bộ xử lý PDF...');
+            await ensureWorker();
+            setProgress(60, o.mode === 'set' ? 'Đang mã hóa...' : 'Đang gỡ mật khẩu...');
+            const m = await workerCall(it.bytes, o);
+            const r = JSON.parse(m.json);
+            if (!r.ok) throw new Error(r.err === 'badpw' ? 'Sai mật khẩu.' : 'Không xử lý được file.');
+            const base = baseName(it.name);
+            return [{ name: base + (o.mode === 'set' ? '_baove.pdf' : '_mokhoa.pdf'), data: new Uint8Array(m.bytes) }];
+        }
+    };
+
+    TOOLS.meta = {
+        read() {
+            const o = { mode: $('tl-meta-mode').value, xmp: $('tl-meta-xmp').checked };
+            ['title', 'author', 'subject', 'keywords', 'creator', 'producer'].forEach(k => o[k] = $('tl-meta-' + k).value.trim());
+            return o;
+        },
+        async run(it, o) {
+            const pdf = await loadLib(it);
+            const { PDFName, PDFHexString } = P();
+            if (o.xmp) pdf.catalog.delete(PDFName.of('Metadata'));
+            if (o.mode === 'clear') {
+                pdf.context.trailerInfo.Info = undefined;
+            } else {
+                const info = pdf.getInfoDict();
+                const map = { Title: o.title, Author: o.author, Subject: o.subject, Keywords: o.keywords, Creator: o.creator, Producer: o.producer };
+                Object.keys(map).forEach(k => { if (map[k]) info.set(PDFName.of(k), PDFHexString.fromText(map[k])); else info.delete(PDFName.of(k)); });
+            }
+            return [{ name: baseName(it.name) + (o.mode === 'clear' ? '_sach.pdf' : '_sua.pdf'), data: await pdf.save() }];
+        }
+    };
+
+    TOOLS.watermark = {
+        read() {
+            const o = {
+                type: $('tl-wm-type').value, text: $('tl-wm-text').value, size: +$('tl-wm-size').value || 72, color: $('tl-wm-color').value,
+                bold: $('tl-wm-bold').checked, op: Math.max(0.02, Math.min(1, (+$('tl-wm-op').value || 25) / 100)), rot: +$('tl-wm-rot').value || 0,
+                pos: $('tl-wm-pos').value, pages: $('tl-wm-pages').value, imgw: Math.max(5, Math.min(100, +$('tl-wm-imgw').value || 40)), imgFile: null
+            };
+            if (o.type === 'text' && !o.text.trim()) throw new Error('Hãy nhập nội dung chữ watermark.');
+            if (o.type === 'image') {
+                o.imgFile = $('tl-wm-img').files[0];
+                if (!o.imgFile) throw new Error('Hãy chọn ảnh watermark.');
+            }
+            return o;
+        },
+        async run(it, o) {
+            const pdf = await loadLib(it);
+            const L = P();
+            let font = null, img = null, imgBytes = null;
+            if (o.type === 'text') font = await getFontLib(pdf, o.bold);
+            else {
+                imgBytes = new Uint8Array(await o.imgFile.arrayBuffer());
+                if (imgBytes[0] === 0xFF && imgBytes[1] === 0xD8 && exifOrientation(imgBytes) === 1) img = await pdf.embedJpg(imgBytes);
+                else if (imgBytes[0] === 0x89 && imgBytes[1] === 0x50) img = await pdf.embedPng(imgBytes);
+                else {
+                    const bmp = await createImageBitmap(o.imgFile);
+                    const cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height;
+                    cv.getContext('2d').drawImage(bmp, 0, 0);
+                    img = await pdf.embedPng(new Uint8Array(await (await canvasBlob(cv, 'image/png')).arrayBuffer()));
+                }
+            }
+            const pgs = pdf.getPages();
+            const idx = parsePages(o.pages, pgs.length) || pgs.map((_, i) => i);
+            const text = o.type === 'text' ? safeText(font, o.text.trim()) : '';
+            const color = hexRgb(o.color);
+            idx.forEach((pi, k) => {
+                const page = pgs[pi], g = pageGeo(page);
+                let w, h;
+                if (o.type === 'text') { w = font.widthOfTextAtSize(text, o.size); h = o.size; }
+                else { w = g.W * o.imgw / 100; h = w * img.height / img.width; }
+                const place = (cx, cy) => {
+                    const off = o.type === 'text' ? [-w / 2, -h * 0.3] : [-w / 2, -h / 2];
+                    const [dx, dy] = rotv(off[0], off[1], o.rot);
+                    const u = toUser(g, cx + dx, cy + dy, o.rot);
+                    if (o.type === 'text') page.drawText(text, { x: u.x, y: u.y, size: o.size, font, color, opacity: o.op, rotate: L.degrees(u.ang) });
+                    else page.drawImage(img, { x: u.x, y: u.y, width: w, height: h, opacity: o.op, rotate: L.degrees(u.ang) });
+                };
+                if (o.pos === 'center') place(g.W / 2, g.H / 2);
+                else {
+                    const sx = w * 1.5 + 30, sy = h * (o.type === 'text' ? 4 : 1.6) + 20;
+                    let cnt = 0, row = 0;
+                    for (let y = sy / 2; y < g.H + sy && cnt < 500; y += sy, row++) {
+                        for (let x = (row % 2 ? sx / 2 : 0); x < g.W + sx && cnt < 500; x += sx) { place(x, y); cnt++; }
+                    }
+                }
+                setProgress(((k + 1) / idx.length) * 100, 'Đang chèn watermark ' + (k + 1) + '/' + idx.length + '...');
+            });
+            return [{ name: baseName(it.name) + '_watermark.pdf', data: await pdf.save() }];
+        }
+    };
+
+    TOOLS.pagenum = {
+        read() {
+            return {
+                fmt: $('tl-pn-fmt').value, pos: $('tl-pn-pos').value, size: +$('tl-pn-size').value || 11, color: $('tl-pn-color').value,
+                from: Math.max(1, parseInt($('tl-pn-from').value, 10) || 1), start: parseInt($('tl-pn-start').value, 10) || 0,
+                margin: Math.max(3, +$('tl-pn-margin').value || 10) * 72 / 25.4
+            };
+        },
+        async run(it, o) {
+            const pdf = await loadLib(it);
+            const font = await getFontLib(pdf, false);
+            const color = hexRgb(o.color);
+            const pgs = pdf.getPages();
+            const total = pgs.length;
+            for (let i = o.from - 1; i < total; i++) {
+                const num = o.start + (i - (o.from - 1));
+                const txt = safeText(font, o.fmt.replace('{n}', num).replace('{N}', total));
+                const page = pgs[i], g = pageGeo(page);
+                const w = font.widthOfTextAtSize(txt, o.size);
+                const hz = o.pos[1], vt = o.pos[0];
+                const X = hz === 'l' ? o.margin : hz === 'r' ? g.W - o.margin - w : (g.W - w) / 2;
+                const Y = vt === 'b' ? o.margin : g.H - o.margin - o.size * 0.75;
+                const u = toUser(g, X, Y, 0);
+                page.drawText(txt, { x: u.x, y: u.y, size: o.size, font, color, rotate: P().degrees(u.ang) });
+            }
+            setProgress(100, 'Đang lưu file...');
+            return [{ name: baseName(it.name) + '_danhso.pdf', data: await pdf.save() }];
+        }
+    };
+
+    function parseBookmarks(text) {
+        const out = [];
+        text.split(/\r?\n/).forEach((raw, ln) => {
+            if (!raw.trim()) return;
+            const m = raw.match(/^[\s]*([-–>]*)\s*(.*)$/);
+            let level = m[1].length, rest = m[2].trim();
+            let title, page;
+            const bar = rest.lastIndexOf('|');
+            if (bar >= 0) { title = rest.slice(0, bar).trim(); page = parseInt(rest.slice(bar + 1), 10); }
+            else { const t = rest.match(/^(.*?)[\s.]+(\d+)$/); if (t) { title = t[1].trim(); page = parseInt(t[2], 10); } }
+            if (!title || !page) throw new Error('Dòng ' + (ln + 1) + ' không đúng định dạng "Tiêu đề | số trang": ' + raw.trim());
+            out.push({ title, page: page - 1, level });
+        });
+        return out;
+    }
+    TOOLS.bookmark = {
+        read() {
+            const e = parseBookmarks($('tl-bm-text').value);
+            if (!e.length) throw new Error('Hãy nhập danh sách mục lục.');
+            return { entries: e };
+        },
+        async run(it, o) {
+            const pdf = await loadLib(it);
+            const L = P();
+            const ctx = pdf.context, N = n => L.PDFName.of(n);
+            const pages = pdf.getPages();
+            let prev = -1;
+            const ents = o.entries.map(e => {
+                let lv = Math.min(e.level, prev + 1); prev = lv;
+                return { title: e.title, page: Math.max(0, Math.min(pages.length - 1, e.page)), level: lv };
+            });
+            const nodes = ents.map(e => Object.assign({}, e, { ref: ctx.nextRef(), kids: [] }));
+            const top = [], stack = [];
+            nodes.forEach(n => {
+                while (stack.length && stack[stack.length - 1].level >= n.level) stack.pop();
+                n.parent = stack.length ? stack[stack.length - 1] : null;
+                (n.parent ? n.parent.kids : top).push(n);
+                stack.push(n);
+            });
+            const countDesc = n => n.kids.reduce((s, k) => s + 1 + countDesc(k), 0);
+            const rootRef = ctx.nextRef();
+            const write = (list, parentRef) => {
+                list.forEach((n, i) => {
+                    const d = ctx.obj({});
+                    d.set(N('Title'), L.PDFHexString.fromText(n.title));
+                    d.set(N('Parent'), parentRef);
+                    if (i > 0) d.set(N('Prev'), list[i - 1].ref);
+                    if (i < list.length - 1) d.set(N('Next'), list[i + 1].ref);
+                    if (n.kids.length) {
+                        d.set(N('First'), n.kids[0].ref);
+                        d.set(N('Last'), n.kids[n.kids.length - 1].ref);
+                        d.set(N('Count'), L.PDFNumber.of(countDesc(n)));
+                    }
+                    d.set(N('Dest'), ctx.obj([pages[n.page].ref, N('XYZ'), null, null, null]));
+                    ctx.assign(n.ref, d);
+                    write(n.kids, n.ref);
+                });
+            };
+            const root = ctx.obj({});
+            root.set(N('Type'), N('Outlines'));
+            root.set(N('First'), top[0].ref);
+            root.set(N('Last'), top[top.length - 1].ref);
+            root.set(N('Count'), L.PDFNumber.of(nodes.length));
+            ctx.assign(rootRef, root);
+            write(top, rootRef);
+            pdf.catalog.set(N('Outlines'), rootRef);
+            pdf.catalog.set(N('PageMode'), N('UseOutlines'));
+            return [{ name: baseName(it.name) + '_mucluc.pdf', data: await pdf.save() }];
+        }
+    };
+
+    // ----- OCR -----
+    let tessWorker = null, tessLang = '';
+    async function ensureTesseract(lang) {
+        if (typeof Tesseract === 'undefined') {
+            await loadScript(['https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js', 'https://unpkg.com/tesseract.js@7.0.0/dist/tesseract.min.js'], 'Không tải được thư viện OCR (cần kết nối mạng lần đầu)');
+        }
+        if (tessWorker && tessLang === lang) return tessWorker;
+        if (tessWorker) { try { await tessWorker.terminate(); } catch (e) {} tessWorker = null; }
+        tessWorker = await Tesseract.createWorker(lang.split('+'), 1, {
+            logger: m => { if (m.status && m.status.indexOf('loading') === 0) setProgress(null, 'Đang tải dữ liệu nhận dạng (' + m.status.replace('loading ', '') + ')...'); }
+        });
+        tessLang = lang;
+        return tessWorker;
+    }
+    TOOLS.ocr = {
+        read() { return { lang: $('tl-ocr-lang').value, dpi: +$('tl-ocr-dpi').value, out: $('tl-ocr-out').value, pages: $('tl-ocr-pages').value }; },
+        async run(it, o) {
+            setProgress(0, 'Đang chuẩn bị bộ OCR...');
+            const wk = await ensureTesseract(o.lang);
+            const doc = await openPdfJs(it);
+            const n = doc.numPages;
+            let pages = parsePages(o.pages, n);
+            if (!pages) { pages = []; for (let i = 0; i < n; i++) pages.push(i); }
+            if (!pages.length) throw new Error('Không có trang hợp lệ (file có ' + n + ' trang).');
+            const wantPdf = o.out !== 'txt';
+            let pdf = null, font = null;
+            if (wantPdf) { pdf = await loadLib(it); font = await getFontLib(pdf, false); }
+            const L = P();
+            const texts = [];
+            for (let k = 0; k < pages.length; k++) {
+                const pi = pages[k];
+                setProgress((k / pages.length) * 100, 'OCR trang ' + (pi + 1) + ' (' + (k + 1) + '/' + pages.length + ')...');
+                const page = await doc.getPage(pi + 1);
+                const vp = page.getViewport({ scale: o.dpi / 72 });
+                const cv = document.createElement('canvas');
+                cv.width = Math.ceil(vp.width); cv.height = Math.ceil(vp.height);
+                const c = cv.getContext('2d');
+                c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height);
+                await page.render({ canvasContext: c, viewport: vp }).promise;
+                const res = await wk.recognize(cv, {}, { text: true, blocks: true });
+                cv.width = cv.height = 1;
+                texts.push('=== Trang ' + (pi + 1) + ' ===\n' + (res.data.text || '').trim());
+                if (wantPdf) {
+                    const lp = pdf.getPage(pi);
+                    const rot = ((lp.getRotation().angle % 360) + 360) % 360;
+                    (res.data.blocks || []).forEach(b => (b.paragraphs || []).forEach(pa => (pa.lines || []).forEach(ln => (ln.words || []).forEach(wd => {
+                        const t = safeText(font, (wd.text || '').trim());
+                        if (!t) return;
+                        const bb = wd.bbox, wpx = bb.x1 - bb.x0, hpx = bb.y1 - bb.y0;
+                        if (wpx <= 0 || hpx <= 0) return;
+                        const wpt = wpx / vp.scale;
+                        const w1 = font.widthOfTextAtSize(t, 1);
+                        if (!w1) return;
+                        let size = wpt / w1;
+                        const hpt = hpx / vp.scale;
+                        size = Math.max(hpt * 0.4, Math.min(hpt * 1.6, size));
+                        const p0 = vp.convertToPdfPoint(bb.x0, bb.y1 - hpx * 0.2);
+                        lp.pushOperators(L.pushGraphicsState(), L.setTextRenderingMode(L.TextRenderingMode.Invisible));
+                        lp.drawText(t, { x: p0[0], y: p0[1], size, font, rotate: L.degrees(rot) });
+                        lp.pushOperators(L.popGraphicsState());
+                    }))));
+                }
+                page.cleanup();
+                await new Promise(r => setTimeout(r, 0));
+            }
+            doc.destroy();
+            const base = baseName(it.name), outs = [];
+            if (wantPdf) outs.push({ name: base + '_ocr.pdf', data: await pdf.save() });
+            if (o.out !== 'pdf') outs.push({ name: base + '_ocr.txt', data: new Blob(['﻿' + texts.join('\n\n')], { type: 'text/plain;charset=utf-8' }) });
+            return outs;
+        }
+    };
+
+    // ---------- Danh sách file ----------
+    async function addFiles(files) {
+        const kind = INFO[tool].accept;
+        const arr = Array.from(files).filter(f => kind === 'img' ? /^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name) : (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)));
+        if (!arr.length) { alert(kind === 'img' ? 'Chỉ nhận file ảnh (JPG, PNG, WebP, GIF, BMP).' : 'Chỉ nhận file PDF.'); return; }
+        const list = lists[kind === 'img' ? 'img' : 'pdf'];
+        for (const f of arr) {
+            const it = { id: ++seq, file: f, name: f.name, size: f.size, bytes: await f.arrayBuffer(), outs: [], err: null, note: '' };
+            if (kind === 'pdf') {
+                try {
+                    const doc = await openPdfJs(it);
+                    it.pages = doc.numPages;
+                    try { const md = await doc.getMetadata(); it.meta = md && md.info; } catch (e) {}
+                    doc.destroy();
+                } catch (e) {
+                    if (e && e.name === 'PasswordException') { it.enc = true; it.pages = '?'; }
+                    else it.err = 'Không đọc được file PDF';
+                }
+            } else it.url = URL.createObjectURL(f);
+            list.push(it);
+        }
+        if (kind === 'pdf' && tool === 'meta') fillMetaFromFirst();
+        render();
+    }
+    function fillMetaFromFirst() {
+        const it = lists.pdf.find(x => x.meta);
+        if (!it) return;
+        const m = it.meta;
+        [['title', 'Title'], ['author', 'Author'], ['subject', 'Subject'], ['keywords', 'Keywords'], ['creator', 'Creator'], ['producer', 'Producer']].forEach(([k, f]) => { $('tl-meta-' + k).value = m[f] || ''; });
+    }
+    function render() {
+        const list = curList(), kind = INFO[tool].accept;
+        $('tl-list-title').textContent = kind === 'img' ? 'DANH SÁCH ẢNH' : 'DANH SÁCH FILE PDF';
+        const box = $('tl-list');
+        if (!list.length) {
+            box.innerHTML = '<div style="color:gray; font-style:italic; text-align:center; padding-top:40px;">Chưa chọn file nào. Kéo thả ' + (kind === 'img' ? 'ảnh' : 'PDF') + ' vào đây hoặc bấm nút chọn file.</div>';
+        } else {
+            box.innerHTML = list.map((it, i) => {
+                const outs = it.outs.filter(o => !o.skipDownload || true).map((o, j) => '<a href="#" data-dl="' + it.id + ':' + j + '" style="margin-right:10px; font-size:12px;">⬇ ' + esc(o.name) + ' (' + fmtBytes(o.data.size !== undefined ? o.data.size : o.data.length) + ')</a>').join('');
+                const thumb = it.url ? '<img src="' + it.url + '" style="width:44px; height:44px; object-fit:cover; border-radius:4px; margin-right:10px;">' : '<span style="font-size:22px; margin-right:10px;">📄</span>';
+                const mv = kind === 'img' ? '<button class="btn" data-mv="' + it.id + ':-1" style="width:auto; padding:2px 8px; margin:0 2px;" title="Lên">↑</button><button class="btn" data-mv="' + it.id + ':1" style="width:auto; padding:2px 8px; margin:0 2px;" title="Xuống">↓</button>' : '';
+                const pw = it.enc && tool !== 'protect' ? '<div style="color:#c42b2b; font-size:12px; margin-top:2px;">File có mật khẩu: hãy dùng "Đặt / gỡ mật khẩu" → Gỡ mật khẩu trước.</div>' : '';
+                return '<div class="tl-row">' + thumb +
+                    '<div style="flex:1; min-width:0;"><div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + esc(it.name) + '</div>' +
+                    '<div style="font-size:12px; color:#666;">' + fmtBytes(it.size) + (kind === 'pdf' ? ' · ' + (it.pages || '?') + ' trang' : '') + (it.enc ? ' · 🔒 có mật khẩu' : '') + '</div>' +
+                    pw + (it.err ? '<div style="color:#c42b2b; font-size:12px; margin-top:2px;">⚠ ' + esc(it.err) + '</div>' : '') +
+                    (it.note ? '<div style="color:#178a4c; font-size:12px; margin-top:2px;">✔ ' + esc(it.note) + '</div>' : '') +
+                    (outs ? '<div style="margin-top:3px;">' + outs + '</div>' : '') + '</div>' + mv +
+                    '<button class="btn btn-danger" data-rm="' + it.id + '" style="width:auto; padding:2px 8px; margin:0 0 0 4px;" title="Bỏ khỏi danh sách">✕</button></div>';
+            }).join('');
+        }
+        const hasOut = lists.pdf.concat(lists.img).some(it => it.outs.length);
+        $('tl-run-btn').disabled = busy || !list.length;
+        $('tl-clear-btn').style.display = list.length ? '' : 'none';
+        $('tl-zip-btn').style.display = list.some(it => it.outs.length) && hasOut ? '' : 'none';
+    }
+
+    async function run() {
+        if (busy) return;
+        const list = curList();
+        if (!list.length) return;
+        let opts;
+        try { opts = TOOLS[tool].read(); } catch (e) { alert(e.message); return; }
+        const T = TOOLS[tool];
+        busy = true; render();
+        list.forEach(it => { it.outs = []; it.err = null; if (tool !== 'img2pdf') it.note = ''; });
+        $('tl-run-btn').textContent = '⏳ Đang xử lý...';
+        try {
+            if (T.all) {
+                try { list[0].outs = await T.run(list, opts); } catch (e) { list[0].err = e.message || String(e); console.error(e); }
+            } else {
+                for (let i = 0; i < list.length; i++) {
+                    const it = list[i];
+                    if (it.err && !it.pages) continue;
+                    if (it.enc && tool !== 'protect') { it.err = 'File có mật khẩu.'; continue; }
+                    setProgress((i / list.length) * 100, 'Đang xử lý ' + (i + 1) + '/' + list.length + ': ' + it.name);
+                    try { it.outs = await T.run(it, opts); }
+                    catch (e) { it.err = e.message || String(e); console.error(e); }
+                }
+            }
+        } finally {
+            busy = false;
+            $('tl-run-btn').textContent = '▶ THỰC HIỆN';
+        }
+        const all = list.reduce((a, it) => a.concat(it.outs.map(o => ({ it, o }))), []);
+        const ok = all.length, errs = list.filter(it => it.err).length;
+        setProgress(100, ok ? 'Xong: tạo được ' + ok + ' file' + (errs ? ', ' + errs + ' file lỗi.' : '.') : 'Không tạo được file nào.');
+        render();
+        const real = all.filter(x => !x.o.skipDownload);
+        if (real.length === 1) saveBlob(toBlob(real[0].o.data, real[0].o.name), real[0].o.name);
+        else if (real.length > 1) zipAll();
+    }
+
+    async function zipAll() {
+        const all = [];
+        lists.pdf.concat(lists.img).forEach(it => it.outs.forEach(o => { if (!o.skipDownload) all.push(o); }));
+        if (!all.length) return;
+        try { await ensureJSZip(); } catch (e) { alert(e.message); return; }
+        const zip = new JSZip(), used = {};
+        all.forEach(o => {
+            let nm = o.name; const m = nm.match(/^(.*?)(\.[^.]+)?$/);
+            if (used[nm]) { let k = 2; while (used[m[1] + '_' + k + (m[2] || '')]) k++; nm = m[1] + '_' + k + (m[2] || ''); }
+            used[nm] = 1;
+            zip.file(nm, o.data);
+        });
+        const blob = await zip.generateAsync({ type: 'blob' });
+        saveBlob(blob, 'ket-qua-pdf-tools.zip');
+    }
+
+    // ---------- Chọn công cụ ----------
+    function selectTool(name) {
+        if (!INFO[name]) return;
+        tool = name;
+        $('tl-tool').value = name;
+        document.querySelectorAll('#tab-tools .tl-opts').forEach(d => d.style.display = d.dataset.tool === name ? 'block' : 'none');
+        $('tl-hint').textContent = INFO[name].hint;
+        const img = INFO[name].accept === 'img';
+        $('tl-input').accept = img ? 'image/*' : 'application/pdf';
+        $('tl-pick-btn').textContent = img ? '➕ Chọn ảnh' : '➕ Chọn file PDF';
+        if (name === 'meta') fillMetaFromFirst();
+        render();
+    }
+    window.toolsSelect = selectTool;
+    window.warmOffline = async function (say) {
+        say('Đang tải thư viện nén ZIP...');
+        await ensureJSZip();
+        say('Đang tải thư viện Excel...');
+        if (typeof ExcelJS === 'undefined') await loadScript(['https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js', 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js'], 'Không tải được ExcelJS');
+        try { await fetch(pdfjsLib.GlobalWorkerOptions.workerSrc, { mode: 'cors' }).then(r => r.arrayBuffer()); } catch (e) {}
+        say('Đang tải bộ OCR và dữ liệu tiếng Việt, tiếng Anh...');
+        await ensureTesseract('vie+eng');
+        try { await tessWorker.terminate(); } catch (e) {}
+        tessWorker = null; tessLang = '';
+        say('Đang tải bộ xử lý PDF (~55 MB, có thể mất vài phút)...');
+        setProgress(null, '');
+        await ensureWorker();
+        try { worker.terminate(); } catch (e) {}
+        worker = null; workerLoad = null;
+    };
+
+    function init() {
+        $('tl-tool').addEventListener('change', e => {
+            selectTool(e.target.value);
+            document.querySelectorAll('.menu-item').forEach(b => b.classList.toggle('active', (b.getAttribute('onclick') || '').indexOf("toolsSelect('" + e.target.value + "')") >= 0));
+        });
+        $('tl-pick-btn').addEventListener('click', () => $('tl-input').click());
+        $('tl-input').addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
+        $('tl-run-btn').addEventListener('click', run);
+        $('tl-zip-btn').addEventListener('click', zipAll);
+        $('tl-clear-btn').addEventListener('click', () => { curList().forEach(it => it.url && URL.revokeObjectURL(it.url)); curList().length = 0; $('tl-progress-wrap').style.display = 'none'; render(); });
+        const drop = $('tl-drop');
+        drop.addEventListener('dragover', e => { e.preventDefault(); drop.style.outline = '2px dashed var(--primary)'; });
+        drop.addEventListener('dragleave', () => { drop.style.outline = ''; });
+        drop.addEventListener('drop', e => { e.preventDefault(); drop.style.outline = ''; if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+        $('tl-list').addEventListener('click', e => {
+            const t = e.target.closest('[data-rm],[data-mv],[data-dl]');
+            if (!t) return;
+            e.preventDefault();
+            const list = curList();
+            if (t.dataset.rm) { const i = list.findIndex(x => x.id === +t.dataset.rm); if (i >= 0) { list[i].url && URL.revokeObjectURL(list[i].url); list.splice(i, 1); render(); } }
+            else if (t.dataset.mv) { const [id, d] = t.dataset.mv.split(':').map(Number); const i = list.findIndex(x => x.id === id), j = i + d; if (i >= 0 && j >= 0 && j < list.length) { const x = list[i]; list[i] = list[j]; list[j] = x; render(); } }
+            else if (t.dataset.dl) { const [id, j] = t.dataset.dl.split(':').map(Number); const it = list.find(x => x.id === id); if (it && it.outs[j]) saveBlob(toBlob(it.outs[j].data, it.outs[j].name), it.outs[j].name); }
+        });
+        // Hiện/ẩn tuỳ chọn phụ
+        $('tl-split-mode').addEventListener('change', () => {
+            const m = $('tl-split-mode').value;
+            $('tl-split-ranges-row').style.display = (m === 'ranges' || m === 'extract') ? '' : 'none';
+            $('tl-split-n-row').style.display = m === 'every' ? '' : 'none';
+        });
+        $('tl-pw-mode').addEventListener('change', () => {
+            const s = $('tl-pw-mode').value === 'set';
+            $('tl-pw-set').style.display = s ? '' : 'none'; $('tl-pw-rm').style.display = s ? 'none' : '';
+        });
+        $('tl-meta-mode').addEventListener('change', () => { $('tl-meta-edit').style.display = $('tl-meta-mode').value === 'edit' ? '' : 'none'; });
+        $('tl-wm-type').addEventListener('change', () => {
+            const t = $('tl-wm-type').value === 'text';
+            $('tl-wm-text-row').style.display = t ? '' : 'none'; $('tl-wm-img-row').style.display = t ? 'none' : '';
+            if (!t && $('tl-wm-rot').value === '45') $('tl-wm-rot').value = '0';
+            if (t && $('tl-wm-rot').value === '0') $('tl-wm-rot').value = '45';
+        });
+        $('tl-bm-load').addEventListener('click', async () => {
+            const it = lists.pdf[0];
+            if (!it) { alert('Hãy chọn file PDF trước.'); return; }
+            try {
+                const doc = await openPdfJs(it);
+                const outline = await doc.getOutline();
+                if (!outline || !outline.length) { alert('File này chưa có mục lục.'); doc.destroy(); return; }
+                const lines = [];
+                const walk = async (items, lv) => {
+                    for (const o of items) {
+                        let dest = o.dest;
+                        try {
+                            if (typeof dest === 'string') dest = await doc.getDestination(dest);
+                            if (Array.isArray(dest)) {
+                                const pi = typeof dest[0] === 'object' ? await doc.getPageIndex(dest[0]) : dest[0];
+                                lines.push('-'.repeat(lv) + o.title.replace(/\|/g, '/') + ' | ' + (pi + 1));
+                            }
+                        } catch (e) {}
+                        if (o.items && o.items.length) await walk(o.items, lv + 1);
+                    }
+                };
+                await walk(outline, 0);
+                doc.destroy();
+                $('tl-bm-text').value = lines.join('\n');
+            } catch (e) { alert('Không đọc được mục lục: ' + e.message); }
+        });
+        $('tl-bm-pages').addEventListener('click', () => {
+            const it = lists.pdf[0];
+            if (!it || !it.pages || it.pages === '?') { alert('Hãy chọn file PDF trước.'); return; }
+            const a = []; for (let i = 1; i <= it.pages; i++) a.push('Trang ' + i + ' | ' + i);
+            $('tl-bm-text').value = a.join('\n');
+        });
+        selectTool('split');
+    }
+    init();
+    window._tl = { TOOLS, lists, addFiles, run, selectTool, parseBookmarks };
+})();
+</script>
+<script>
+(function () {
+    var info = document.getElementById('off-info'), btn = document.getElementById('off-btn'), st = document.getElementById('off-status');
+    var httpOk = /^https?:$/.test(location.protocol) && 'serviceWorker' in navigator;
+    function refresh() {
+        if (!info) return;
+        if (!httpOk) {
+            info.textContent = 'Đang mở trực tiếp từ file nên trình duyệt không cho lưu bộ nhớ offline. Để dùng offline: đặt index.html cùng sw.js, manifest.webmanifest và 2 file icon lên một địa chỉ https (hoặc chạy trên localhost), mở một lần có mạng, bấm nút bên dưới, từ đó dùng được cả khi mất mạng.';
+        } else if (navigator.serviceWorker.controller) {
+            info.textContent = 'Bộ nhớ offline đang bật: thư viện nào đã dùng một lần sẽ được lưu lại. Bấm nút bên dưới để tải sẵn toàn bộ (khoảng 90 MB), sau đó mọi chức năng chạy được khi mất mạng.';
+        } else {
+            info.textContent = 'Bộ nhớ offline đang khởi động, hãy tải lại trang một lần.';
+        }
+    }
+    if (httpOk) {
+        navigator.serviceWorker.register('./sw.js').then(function () { setTimeout(refresh, 800); }).catch(function () { httpOk = false; refresh(); });
+    }
+    refresh();
+    if (btn) btn.addEventListener('click', async function () {
+        if (!httpOk || !navigator.serviceWorker.controller) { alert(info.textContent); return; }
+        btn.disabled = true;
+        try { await window.warmOffline(function (m) { st.textContent = m; }); st.textContent = '✅ Đã tải sẵn xong. Giờ có thể dùng khi không có mạng.'; }
+        catch (e) { st.textContent = '⚠ Chưa tải được hết: ' + ((e && e.message) || e); }
+        btn.disabled = false;
+    });
+})();
+</script>
+<style>
+.region-select-box{position:absolute;z-index:2000;border:2px solid #2563eb;background:rgba(37,99,235,.12);pointer-events:none;display:none}.region-selected{outline:2px solid #2563eb!important;outline-offset:2px;background-color:rgba(37,99,235,.08)!important}.region-toolbar{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}.region-toolbar button{width:auto!important;margin:0!important;padding:7px 10px!important;font-size:12px}.region-status{font-size:12px;color:var(--primary);font-weight:600;margin-top:7px;min-height:16px}#editor-page-shell.region-mode{cursor:crosshair}
+</style>
+<script>
+(function(){
+  let regionMode=false,selecting=false,moving=false,movedAwaitingOutsideClick=false,start={x:0,y:0},moveStart={x:0,y:0},selected=[],snapshot=[],lastMovedBounds=null;const EPS=2;
+  const shell=()=>document.getElementById('editor-page-shell'),layer=()=>document.getElementById('editor-text-layer');
+  function ensureUi(){const side=document.querySelector('#tab-editor .editor-sidebar');if(!side||document.getElementById('region-select-controls'))return;const card=document.createElement('div');card.className='card';card.id='region-select-controls';card.innerHTML='<p class="card-title">▣ CHỌN VÙNG & DI CHUYỂN</p><div style="font-size:12px;line-height:1.45">Nhấn nút bên dưới, rồi giữ chuột trái và kéo khung quanh vùng cần chọn.</div><div class="region-toolbar"><button class="btn btn-small" id="region-mode-btn">Chọn vùng</button></div><div class="region-status" id="region-status">Đang ở chế độ mặc định</div>';side.insertBefore(card,side.children[1]||null);document.getElementById('region-mode-btn').onclick=()=>{if(regionMode){clearSelection()}else{selected.forEach(x=>x.el.classList.remove('region-selected'));selected=[];regionMode=true;updateUi()}};updateUi()}
+  function updateUi(){const b=document.getElementById('region-mode-btn'),s=document.getElementById('region-status');if(b){b.textContent=regionMode?'Bỏ chọn vùng':'Chọn vùng';b.classList.toggle('btn-danger',regionMode);b.setAttribute('aria-pressed',regionMode?'true':'false')}if(s)s.textContent=selected.length?'Đã chọn '+selected.length+' đối tượng':regionMode?'Kéo chuột để tạo khung chọn':'Chưa chọn đối tượng'}
+  function rectOf(el,root){const a=el.getBoundingClientRect(),b=root.getBoundingClientRect();return{left:a.left-b.left,top:a.top-b.top,right:a.right-b.left,bottom:a.bottom-b.top,width:a.width,height:a.height}}
+  function intersects(a,b){return a.right>=b.left-EPS&&a.left<=b.right+EPS&&a.bottom>=b.top-EPS&&a.top<=b.bottom+EPS}
+  function objects(){const l=layer();return l?Array.from(l.querySelectorAll('span:not(.original-mask),.editor-img-box')).filter(el=>el.offsetWidth>0&&el.offsetHeight>0):[]}
+  function clearSelection(){selected.forEach(x=>{if(x.el&&x.el.classList)x.el.classList.remove('region-selected')});selected=[];moving=false;selecting=false;regionMode=false;movedAwaitingOutsideClick=false;lastMovedBounds=null;start={x:0,y:0};snapshot=[];document.body.style.userSelect='';const box=document.getElementById('region-select-box');if(box){box.style.display='none';box.style.left='0px';box.style.top='0px';box.style.width='0px';box.style.height='0px';}const btn=document.getElementById('region-mode-btn');if(btn){btn.textContent='Chọn vùng';btn.classList.remove('btn-danger');btn.setAttribute('aria-pressed','false')}updateUi()}
+  function point(e){const r=shell().getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+  function startSelect(e){if(!regionMode||e.button!==0||!shell()||!layer()||e.target.closest('.editing-input'))return;e.preventDefault();selecting=true;start=point(e);let box=document.getElementById('region-select-box');if(!box){box=document.createElement('div');box.id='region-select-box';box.className='region-select-box';shell().appendChild(box)}Object.assign(box.style,{left:start.x+'px',top:start.y+'px',width:'0px',height:'0px',display:'block'})}
+  function moveSelect(e){if(!selecting)return;const p=point(e),box=document.getElementById('region-select-box');Object.assign(box.style,{left:Math.min(start.x,p.x)+'px',top:Math.min(start.y,p.y)+'px',width:Math.abs(p.x-start.x)+'px',height:Math.abs(p.y-start.y)+'px'})}
+  function endSelect(e){
+    if(!selecting)return;
+    selecting=false;
+    const p=point(e),area={left:Math.min(start.x,p.x),top:Math.min(start.y,p.y),right:Math.max(start.x,p.x),bottom:Math.max(start.y,p.y)};
+    selected=objects().map(el=>({el,rect:rectOf(el,shell())})).filter(x=>intersects(x.rect,area));
+    const box=document.getElementById('region-select-box');
+    if(box){box.style.display='none';box.style.left='0px';box.style.top='0px';box.style.width='0px';box.style.height='0px';}
+    selected.forEach(x=>x.el.classList.add('region-selected'));
+    // Giữ chế độ chọn vùng bật sau khi thả chuột: nút vẫn là 'Bỏ chọn vùng'.
+    // Người dùng tự nhấn 'Bỏ chọn vùng' để xóa lựa chọn và reset khung về mặc định.
+    regionMode=true;
+    start={x:0,y:0};
+    updateUi();
+  }
+  function beginMove(e){if(!selected.length||e.button!==0||!selected.some(x=>x.el===e.target||x.el.contains(e.target)))return;e.preventDefault();moving=true;moveStart={x:e.clientX,y:e.clientY};snapshot=selected.map(x=>({el:x.el,left:parseFloat(x.el.style.left)||0,top:parseFloat(x.el.style.top)||0}));document.body.style.userSelect='none'}
+  function moveGroup(e){if(!moving)return;const dx=e.clientX-moveStart.x,dy=e.clientY-moveStart.y;snapshot.forEach(x=>{x.el.style.left=x.left+dx+'px';x.el.style.top=x.top+dy+'px'})}
+  function endMove(){if(!moving)return;moving=false;movedAwaitingOutsideClick=true;document.body.style.userSelect='';lastMovedBounds=null;if(selected.length){const rs=selected.map(x=>x.el&&x.el.getBoundingClientRect?x.el.getBoundingClientRect():null).filter(r=>r&&r.width>=0&&r.height>=0);if(rs.length)lastMovedBounds={left:Math.min(...rs.map(r=>r.left))-4,top:Math.min(...rs.map(r=>r.top))-4,right:Math.max(...rs.map(r=>r.right))+4,bottom:Math.max(...rs.map(r=>r.bottom))+4};}selected.forEach(x=>{const el=x.el;if(el&&el.matches&&el.matches('span')&&el._item&&window.editorViewport&&window.savePositionAndText){const idx=Number(el.dataset.tidx),left=parseFloat(el.style.left)||0,top=parseFloat(el.style.top)||0,size=el._ptSize||el._item.height;try{savePositionAndText(el,el._item,idx,[0,0,0,0,left,top+size*(window.editorScale||1)])}catch(_){}}});if(window.recordHistory)try{recordHistory()}catch(_){}}
+  function pointInsideSelectedBounds(e){let b=lastMovedBounds;if(!b&&selected.length){const rs=selected.map(x=>x.el&&x.el.getBoundingClientRect?x.el.getBoundingClientRect():null).filter(r=>r&&r.width>=0&&r.height>=0);if(rs.length)b={left:Math.min(...rs.map(r=>r.left))-4,top:Math.min(...rs.map(r=>r.top))-4,right:Math.max(...rs.map(r=>r.right))+4,bottom:Math.max(...rs.map(r=>r.bottom))+4};}return !!b&&e.clientX>=b.left&&e.clientX<=b.right&&e.clientY>=b.top&&e.clientY<=b.bottom;}
+  document.addEventListener('DOMContentLoaded',()=>{ensureUi();new MutationObserver(ensureUi).observe(document.body,{childList:true,subtree:true});document.addEventListener('keydown',e=>{if(e.key==='Escape')clearSelection()});
+    // Bắt click ở capture phase để reset trước khi các handler chọn/kéo khác nhận sự kiện.
+    document.addEventListener('mousedown',e=>{if(movedAwaitingOutsideClick&&!moving&&!pointInsideSelectedBounds(e)){clearSelection();const btn=document.getElementById('region-mode-btn');if(btn){btn.textContent='Chọn vùng';btn.classList.remove('btn-danger');btn.setAttribute('aria-pressed','false')}e.stopImmediatePropagation();e.preventDefault();}},true);
+    document.addEventListener('mousedown',e=>{if(e.target.closest&&e.target.closest('#editor-page-shell')){startSelect(e);beginMove(e)} });document.addEventListener('mousemove',e=>{moveSelect(e);moveGroup(e)});document.addEventListener('mouseup',e=>{endSelect(e);endMove()})});
+  const oldSwitch=window.switchTab;window.switchTab=function(){const r=oldSwitch.apply(this,arguments);setTimeout(ensureUi,0);return r};
+})();
+</script>
 </body>
 </html>
-
