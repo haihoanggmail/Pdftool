@@ -495,6 +495,7 @@ function getEmbeddedFont(style) {
         <button class="tab-btn" onclick="switchTab('tab-compare', this)">⚖️ Chế độ So Sánh</button>
         <button class="tab-btn" onclick="switchTab('tab-editor', this)">✏️ Chỉnh Sửa PDF</button>
         <button class="tab-btn" onclick="switchTab('tab-word', this)">📝 PDF → Word</button>
+        <button class="tab-btn" onclick="switchTab('tab-excel', this)">📊 PDF → Excel</button>
         <button class="tab-btn" onclick="switchTab('tab-about', this)">ℹ️ Giới Thiệu</button>
         <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Chuyển chế độ Sáng / Tối" aria-label="Chuyển chế độ Sáng / Tối">🌙 Chế độ tối</button>
         <button class="theme-toggle" id="clear-session-btn" style="margin-left:8px;" onclick="clearSavedSession()" title="Xóa file và thao tác đã được lưu tự động trong trình duyệt">🗑️ Xóa dữ liệu đã lưu</button>
@@ -870,6 +871,72 @@ function getEmbeddedFont(style) {
                 <div id="w2d-progress-wrap" style="display:none; margin-top:10px;">
                     <div style="height:8px; background:#e1dfdd; border-radius:4px; overflow:hidden;"><div id="w2d-progress-bar" style="height:100%; width:0; background:var(--success); transition:width .2s;"></div></div>
                     <div id="w2d-status" class="editor-hint" style="margin-top:4px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-excel" class="tab-content">
+        <div class="main-container">
+            <div class="left-panel">
+                <div class="card">
+                    <p class="card-title">1. Chọn file PDF</p>
+                    <input type="file" id="w2x-input" accept="application/pdf" multiple style="display:none">
+                    <button class="btn" onclick="document.getElementById('w2x-input').click()">➕ Chọn một hoặc nhiều file PDF</button>
+                    <p class="editor-hint" style="margin-top:2px;">Hoặc kéo thả file PDF vào khung bên phải. Chuyển đổi ngay trên máy bạn, file không bị gửi đi đâu.</p>
+                </div>
+                <div class="card">
+                    <p class="card-title">2. Tùy chọn giữ định dạng</p>
+                    <div style="margin-bottom:8px;">
+                        <label style="font-size:11px; font-weight:600; color:#555;">Trang cần chuyển (để trống = tất cả):</label>
+                        <input type="text" id="w2x-pages" placeholder="ví dụ: 1-3,5,8">
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label style="font-size:11px; font-weight:600; color:#555;">Cách xếp vào Excel:</label>
+                        <select id="w2x-mode" style="width:100%; height:32px; border:1px solid #cbd5e1; border-radius:4px; padding:0 6px; background:#fff;">
+                            <option value="page">Mỗi trang một sheet (giữ cả chữ và bảng đúng thứ tự)</option>
+                            <option value="table">Mỗi bảng một sheet (chỉ lấy bảng)</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label style="font-size:11px; font-weight:600; color:#555;">Kiểu số trong PDF:</label>
+                        <select id="w2x-num" style="width:100%; height:32px; border:1px solid #cbd5e1; border-radius:4px; padding:0 6px; background:#fff;">
+                            <option value="auto">Tự nhận (1.200.000 hoặc 1,200,000)</option>
+                            <option value="vn">Kiểu Việt Nam (chấm là hàng nghìn, phẩy là thập phân)</option>
+                            <option value="en">Kiểu Anh/Mỹ (phẩy là hàng nghìn, chấm là thập phân)</option>
+                            <option value="text">Giữ nguyên là chữ, không đổi thành số</option>
+                        </select>
+                    </div>
+                    <label style="font-size:12px; display:flex; align-items:center; gap:6px; cursor:pointer; margin-bottom:4px;">
+                        <input type="checkbox" id="w2x-stream"> Dò cả bảng không có đường viền
+                    </label>
+                    <label style="font-size:12px; display:flex; align-items:center; gap:6px; cursor:pointer; margin-bottom:4px;">
+                        <input type="checkbox" id="w2x-fit" checked> Thu vừa một trang ngang khi in
+                    </label>
+                    <p class="editor-hint">Bảng có đường viền được dựng thành ô Excel (kể cả ô gộp), giữ font, đậm/nghiêng, màu chữ, màu nền, căn lề, độ rộng cột và chiều cao dòng. Chữ ngoài bảng được đặt theo vị trí. Bảng không viền thường vẫn thành các cột thẳng hàng, bật dò bảng nếu muốn có đường kẻ.</p>
+                    <details style="margin-top:6px;">
+                        <summary style="font-size:11px; cursor:pointer; color:#555;">Nâng cao: nguồn bộ chuyển đổi</summary>
+                        <input type="text" id="w2x-base" style="margin-top:4px; font-size:11px;" value="https://cdn.jsdelivr.net/npm/@bentopdf/pymupdf-wasm@0.11.16/">
+                        <p class="editor-hint">Dùng chung bộ chuyển đổi với tab PDF → Word (~55 MB, tải một lần). Ghi Excel cần thêm thư viện ExcelJS tải từ mạng.</p>
+                    </details>
+                </div>
+                <div class="card">
+                    <p class="card-title">3. Chuyển đổi</p>
+                    <button class="btn btn-success" id="w2x-run-btn" disabled>📊 CHUYỂN SANG EXCEL</button>
+                    <button class="btn" id="w2x-zip-btn" style="display:none;">📦 Tải tất cả (ZIP)</button>
+                    <button class="btn btn-danger" id="w2x-clear-btn" style="display:none;">🧹 Xóa danh sách</button>
+                </div>
+            </div>
+            <div class="right-panel" id="w2x-drop">
+                <div class="preview-header">
+                    <span class="merge-preview-title">DANH SÁCH FILE PDF → EXCEL</span>
+                </div>
+                <div class="file-list" id="w2x-list" style="margin-top:8px;">
+                    <div style="color:gray; font-style:italic; text-align:center; padding-top:40px;">Chưa chọn file nào. Kéo thả PDF vào đây hoặc bấm "Chọn file PDF".</div>
+                </div>
+                <div id="w2x-progress-wrap" style="display:none; margin-top:10px;">
+                    <div style="height:8px; background:#e1dfdd; border-radius:4px; overflow:hidden;"><div id="w2x-progress-bar" style="height:100%; width:0; background:var(--success); transition:width .2s;"></div></div>
+                    <div id="w2x-status" class="editor-hint" style="margin-top:4px;"></div>
                 </div>
             </div>
         </div>
@@ -5238,6 +5305,684 @@ self.onmessage = async (ev) => {
     }
     window.w2dDownload = w2dDownload;
     window._w2d = { get items() { return items; }, run: run, addFiles: addFiles, ensureEngine: ensureEngine };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>
+
+<script>
+// ===================== PDF → Excel (PyMuPDF trích bảng/chữ/kiểu + ExcelJS dựng file) =====================
+(function () {
+    const PY_SETUP = `
+import pymupdf, json, re
+
+def _hx(c):
+    if c is None: return None
+    if isinstance(c, int): return '%06X' % (c & 0xFFFFFF)
+    r, g, b = [max(0, min(255, int(round(v * 255)))) for v in list(c)[:3]]
+    return '%02X%02X%02X' % (r, g, b)
+
+def _font(n):
+    n = re.sub(r'^[A-Z]{6}\\+', '', n or '')
+    n = re.split(r'[-,]', n)[0]
+    n = re.sub(r'(PS|MT)$', '', n)
+    n = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', n).strip()
+    n = n.replace('Deja Vu', 'DejaVu')
+    alias = {'carlito': 'Calibri', 'caladea': 'Cambria', 'liberation sans': 'Arial', 'arimo': 'Arial', 'liberation serif': 'Times New Roman', 'tinos': 'Times New Roman', 'liberation mono': 'Courier New', 'cousine': 'Courier New', 'helvetica': 'Arial', 'times': 'Times New Roman', 'times roman': 'Times New Roman', 'courier': 'Courier New'}
+    n = alias.get(n.lower(), n)
+    return n or 'Calibri'
+
+def _cluster(vals, tol):
+    vals = sorted(vals)
+    out = []
+    for v in vals:
+        if out and v - out[-1][-1] <= tol: out[-1].append(v)
+        else: out.append([v])
+    return [sum(g) / len(g) for g in out]
+
+def _near(arr, v):
+    best, bd = 0, 1e18
+    for i, a in enumerate(arr):
+        d = abs(a - v)
+        if d < bd: best, bd = i, d
+    return best
+
+def _inside(r, x, y, pad=0.5):
+    return r[0] - pad <= x <= r[2] + pad and r[1] - pad <= y <= r[3] + pad
+
+def _inter(a, b):
+    w = min(a[2], b[2]) - max(a[0], b[0]); h = min(a[3], b[3]) - max(a[1], b[1])
+    return w * h if w > 0 and h > 0 else 0
+
+def _line_info(l):
+    sp = [s for s in l['spans'] if s['text'].strip() != '' or True]
+    txt = ''.join(s['text'] for s in sp)
+    main = None
+    for s in sp:
+        if s['text'].strip():
+            main = s; break
+    if main is None: main = sp[0] if sp else {'font': '', 'size': 11, 'flags': 0, 'color': 0}
+    fl = main.get('flags', 0)
+    fn = main.get('font', '')
+    bold = bool(fl & 16) or bool(re.search(r'bold|black|heavy', fn, re.I))
+    ital = bool(fl & 2) or bool(re.search(r'italic|oblique', fn, re.I))
+    size = max([s['size'] for s in sp if s['text'].strip()] or [main['size']])
+    return {'text': txt, 'bbox': l['bbox'], 'font': _font(fn), 'size': round(size, 1), 'bold': bold, 'italic': ital, 'color': _hx(main.get('color', 0))}
+
+def w2x_extract(opts_json):
+    opts = json.loads(opts_json)
+    doc = pymupdf.open('/w2x_in.pdf')
+    pages = opts.get('pages')
+    if not pages: pages = list(range(doc.page_count))
+    res = []
+    for pn in pages:
+        if pn < 0 or pn >= doc.page_count: continue
+        w2x_progress('Đang đọc trang %d/%d...' % (pn + 1, doc.page_count))
+        page = doc[pn]
+        pr = page.rect
+        d = page.get_text('dict')
+        lines = []
+        for b in d.get('blocks', []):
+            if b.get('type') != 0: continue
+            for l in b.get('lines', []):
+                if not l.get('spans'): continue
+                li = _line_info(l)
+                if li['text'].strip(): lines.append(li)
+        fills = []
+        strokes = []
+        try:
+            for dr in page.get_drawings():
+                r = dr.get('rect')
+                if r is None: continue
+                f = dr.get('fill')
+                if f is not None and r.width > 2 and r.height > 2 and r.width < pr.width * 0.98:
+                    if not all(v > 0.97 for v in list(f)[:3]): fills.append((tuple(r), _hx(f)))
+                c = dr.get('color')
+                if c is not None: strokes.append((tuple(r), _hx(c)))
+        except Exception:
+            pass
+        tables = []
+        try:
+            for t in page.find_tables(strategy='lines').tables: tables.append((t, True))
+        except Exception:
+            pass
+        if opts.get('stream'):
+            try:
+                for t in page.find_tables(strategy='text').tables:
+                    if t.row_count >= 3 and t.col_count >= 2:
+                        tb = tuple(t.bbox); ar = max(1, (tb[2] - tb[0]) * (tb[3] - tb[1]))
+                        if all(_inter(tb, tuple(o.bbox)) / min(ar, max(1, (o.bbox[2] - o.bbox[0]) * (o.bbox[3] - o.bbox[1]))) < 0.5 for o, _ in tables):
+                            tables.append((t, False))
+            except Exception:
+                pass
+        items = []
+        tbboxes = []
+        for t, bordered in tables:
+            cells = [tuple(c) for c in t.cells if c is not None]
+            if len(cells) < 2: continue
+            xs = _cluster([c[0] for c in cells] + [c[2] for c in cells], 2.0)
+            ys = _cluster([c[1] for c in cells] + [c[3] for c in cells], 2.0)
+            if len(xs) < 3: continue
+            tb = tuple(t.bbox)
+            bc = {}
+            for r, c in strokes:
+                if r[0] >= tb[0] - 3 and r[2] <= tb[2] + 3 and r[1] >= tb[1] - 3 and r[3] <= tb[3] + 3: bc[c] = bc.get(c, 0) + 1
+            border = max(bc, key=bc.get) if bc else '000000'
+            outc = []
+            anytext = False
+            for rect in cells:
+                c0 = _near(xs, rect[0]); c1 = _near(xs, rect[2])
+                r0 = _near(ys, rect[1]); r1 = _near(ys, rect[3])
+                if c1 <= c0: c1 = c0 + 1
+                if r1 <= r0: r1 = r0 + 1
+                cl = [li for li in lines if _inside(rect, (li['bbox'][0] + li['bbox'][2]) / 2, (li['bbox'][1] + li['bbox'][3]) / 2, 1.0)]
+                cl.sort(key=lambda li: (round(li['bbox'][1] / 2), li['bbox'][0]))
+                text = '\\n'.join(li['text'].strip() for li in cl)
+                if text.strip(): anytext = True
+                cell = {'r': r0, 'c': c0, 'rs': r1 - r0, 'cs': c1 - c0, 'text': text}
+                cx, cy = (rect[0] + rect[2]) / 2, (rect[1] + rect[3]) / 2
+                for fr, fh in reversed(fills):
+                    if _inside(fr, cx, cy, 0) and (fr[2] - fr[0]) * (fr[3] - fr[1]) <= (tb[2] - tb[0]) * (tb[3] - tb[1]) * 1.2:
+                        cell['fill'] = fh; break
+                if cl:
+                    m = max(cl, key=lambda li: len(li['text']))
+                    cell.update({'font': m['font'], 'size': m['size'], 'bold': any(li['bold'] for li in cl) and sum(len(li['text']) for li in cl if li['bold']) * 2 >= sum(len(li['text']) for li in cl), 'italic': m['italic'], 'color': m['color']})
+                    bx0 = min(li['bbox'][0] for li in cl); bx1 = max(li['bbox'][2] for li in cl)
+                    by0 = min(li['bbox'][1] for li in cl); by1 = max(li['bbox'][3] for li in cl)
+                    lg, rg = bx0 - rect[0], rect[2] - bx1
+                    tg, bg = by0 - rect[1], rect[3] - by1
+                    wd = rect[2] - rect[0]
+                    if lg <= 7.5 and rg > 7.5: cell['h'] = 'left'
+                    elif rg <= 7.5 and lg > 7.5: cell['h'] = 'right'
+                    elif abs(lg - rg) <= max(3.0, 0.08 * wd): cell['h'] = 'center'
+                    elif lg < rg: cell['h'] = 'left'
+                    else: cell['h'] = 'right'
+                    if abs(tg - bg) <= 3.0: cell['v'] = 'middle'
+                    elif bg < tg - 3.0: cell['v'] = 'bottom'
+                    else: cell['v'] = 'top'
+                outc.append(cell)
+            if not anytext and bordered and len(cells) < 4: continue
+            tbboxes.append(tb)
+            items.append({'type': 'table', 'y0': tb[1], 'y1': tb[3], 'x0': tb[0], 'x1': tb[2], 'xs': xs, 'ys': ys, 'cells': outc, 'border': border if bordered else None})
+        rest = [li for li in lines if not any(_inside(tb, (li['bbox'][0] + li['bbox'][2]) / 2, (li['bbox'][1] + li['bbox'][3]) / 2, 1.0) for tb in tbboxes)]
+        rest.sort(key=lambda li: ((li['bbox'][1] + li['bbox'][3]) / 2, li['bbox'][0]))
+        rows = []
+        for li in rest:
+            yc = (li['bbox'][1] + li['bbox'][3]) / 2
+            if rows and abs(yc - rows[-1]['yc']) < 0.55 * max(li['size'], rows[-1]['size']):
+                rows[-1]['lines'].append(li)
+                rows[-1]['size'] = max(rows[-1]['size'], li['size'])
+            else:
+                rows.append({'yc': yc, 'size': li['size'], 'lines': [li]})
+        for rw in rows:
+            ls = sorted(rw['lines'], key=lambda li: li['bbox'][0])
+            segs = []
+            for li in ls:
+                if segs and li['bbox'][0] - segs[-1]['x1'] < 0.9 * li['size']:
+                    sg = segs[-1]
+                    sg['text'] += (' ' if li['bbox'][0] - sg['x1'] > 0.15 * li['size'] else '') + li['text'].strip()
+                    sg['x1'] = li['bbox'][2]
+                else:
+                    segs.append({'x0': li['bbox'][0], 'x1': li['bbox'][2], 'text': li['text'].strip(), 'font': li['font'], 'size': li['size'], 'bold': li['bold'], 'italic': li['italic'], 'color': li['color']})
+            y0 = min(li['bbox'][1] for li in ls); y1 = max(li['bbox'][3] for li in ls)
+            items.append({'type': 'text', 'y0': y0, 'y1': y1, 'segs': segs})
+        items.sort(key=lambda it: it['y0'])
+        res.append({'page': pn + 1, 'w': pr.width, 'h': pr.height, 'items': items, 'hasText': len(lines) > 0})
+    doc.close()
+    return json.dumps(res)
+`;
+    const WORKER_SRC = `
+let inst = null, py = null;
+self.onmessage = async (ev) => {
+    const m = ev.data;
+    try {
+        if (m.type === 'load') {
+            const mod = await import(m.base + 'dist/index.js');
+            inst = new mod.PyMuPDF({ assetPath: m.base + 'assets/', ghostscriptUrl: '' });
+            self.postMessage({ type: 'status', msg: 'Đang khởi động bộ chuyển đổi...' });
+            await inst.load();
+            py = await inst.getPyodide();
+            py.globals.set('w2x_progress', (s) => self.postMessage({ type: 'progress', msg: String(s) }));
+            py.runPython(m.setup);
+            self.postMessage({ type: 'loaded' });
+        } else if (m.type === 'extract') {
+            let out = '';
+            try {
+                py.FS.writeFile('/w2x_in.pdf', new Uint8Array(m.bytes));
+                out = py.globals.get('w2x_extract')(JSON.stringify(m.opts));
+            } finally {
+                try { py.FS.unlink('/w2x_in.pdf'); } catch (e) {}
+            }
+            self.postMessage({ type: 'done', id: m.id, json: out });
+        }
+    } catch (e) {
+        self.postMessage({ type: 'error', id: m.id, message: String((e && e.message) || e) });
+    }
+};`;
+
+    let worker = null, loadPromise = null, loadedBase = '';
+    const listeners = new Set();
+    let items = [], seq = 0, busy = false;
+    const $ = id => document.getElementById(id);
+    const fmtBytes = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+    function setProgress(pct, msg) {
+        $('w2x-progress-wrap').style.display = 'block';
+        if (pct !== null && pct !== undefined) $('w2x-progress-bar').style.width = Math.max(0, Math.min(100, pct)) + '%';
+        if (msg !== undefined) $('w2x-status').textContent = msg;
+    }
+
+    function ensureEngine() {
+        let base = ($('w2x-base').value || '').trim();
+        if (!base) base = 'https://cdn.jsdelivr.net/npm/@bentopdf/pymupdf-wasm@0.11.16/';
+        if (!base.endsWith('/')) base += '/';
+        if (loadPromise && loadedBase === base) return loadPromise;
+        if (worker) { try { worker.terminate(); } catch (e) {} }
+        loadedBase = base;
+        const url = URL.createObjectURL(new Blob([WORKER_SRC], { type: 'application/javascript' }));
+        worker = new Worker(url);
+        worker.onmessage = ev => listeners.forEach(fn => fn(ev.data));
+        loadPromise = new Promise((resolve, reject) => {
+            const fn = m => {
+                if (m.type === 'status') setProgress(null, m.msg);
+                else if (m.type === 'loaded') { listeners.delete(fn); resolve(); }
+                else if (m.type === 'error' && m.id === undefined) { listeners.delete(fn); reject(new Error(m.message)); }
+            };
+            listeners.add(fn);
+            worker.onerror = e => { listeners.delete(fn); reject(new Error(e.message || 'Không khởi động được bộ chuyển đổi')); };
+            worker.postMessage({ type: 'load', base: base, setup: PY_SETUP });
+        });
+        loadPromise.catch(() => { loadPromise = null; });
+        return loadPromise;
+    }
+
+    function loadScript(urls) {
+        return new Promise((resolve, reject) => {
+            let i = 0;
+            const next = () => {
+                if (i >= urls.length) { reject(new Error('Không tải được thư viện ExcelJS (cần kết nối mạng)')); return; }
+                const s = document.createElement('script');
+                s.src = urls[i++];
+                s.onload = resolve;
+                s.onerror = () => { s.remove(); next(); };
+                document.head.appendChild(s);
+            };
+            next();
+        });
+    }
+    async function ensureExcelJS() {
+        if (typeof ExcelJS !== 'undefined') return;
+        await loadScript(['https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js', 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js']);
+    }
+
+    function parsePages(str, total) {
+        str = (str || '').trim();
+        if (!str) return null;
+        const set = new Set();
+        str.split(',').forEach(part => {
+            part = part.trim();
+            const m = part.match(/^(\d+)\s*-\s*(\d+)$/);
+            if (m) {
+                let a = +m[1], b = +m[2];
+                if (a > b) { const t = a; a = b; b = t; }
+                for (let i = a; i <= b; i++) if (i >= 1 && (!total || i <= total)) set.add(i - 1);
+            } else if (/^\d+$/.test(part)) {
+                const n = +part;
+                if (n >= 1 && (!total || n <= total)) set.add(n - 1);
+            }
+        });
+        return Array.from(set).sort((a, b) => a - b);
+    }
+
+    // ---------- Chuyển chuỗi thành số ----------
+    function detectNumStyle(pages, mode) {
+        if (mode === 'vn' || mode === 'en') return mode;
+        let vn = 0, en = 0;
+        const texts = [];
+        pages.forEach(p => p.items.forEach(it => {
+            if (it.type === 'table') it.cells.forEach(c => texts.push(c.text));
+            else it.segs.forEach(s => texts.push(s.text));
+        }));
+        texts.forEach(t => {
+            t = String(t).trim();
+            if (/^-?\(?\d{1,3}(\.\d{3})+(,\d+)?\)?$/.test(t) || /^-?\d+,\d{1,2}$/.test(t)) vn++;
+            if (/^-?\(?\d{1,3}(,\d{3})+(\.\d+)?\)?$/.test(t) || /^-?\d+\.\d{1,2}$/.test(t)) en++;
+        });
+        return vn >= en ? 'vn' : 'en';
+    }
+    function toValue(text, style, mode) {
+        const raw = String(text);
+        if (mode === 'text') return { v: raw };
+        let t = raw.trim();
+        if (!t) return { v: raw };
+        let neg = false;
+        if (/^\(.*\)$/.test(t)) { neg = true; t = t.slice(1, -1).trim(); }
+        let pre = '', suf = '';
+        let m = t.match(/^([$€£¥])\s*(.*)$/);
+        if (m) { pre = m[1]; t = m[2]; }
+        m = t.match(/^(.*?)\s*(%|₫|đ|VND|VNĐ|USD|EUR|\$|€)$/i);
+        if (m) { suf = m[2]; t = m[1]; }
+        if (/^-/.test(t)) { neg = !neg || neg; t = t.slice(1); if (raw.trim()[0] === '(') neg = true; }
+        if (!/^\d[\d.,]*$/.test(t)) return { v: raw };
+        if (/^0\d+$/.test(t)) return { v: raw }; // 007, số điện thoại...
+        let thou = style === 'vn' ? '.' : ',', dec = style === 'vn' ? ',' : '.';
+        // chuẩn hóa
+        const parts = t.split(dec);
+        if (parts.length > 2) return { v: raw };
+        const intPart = parts[0], decPart = parts[1] || '';
+        let hasThou = false;
+        if (intPart.indexOf(thou) !== -1) {
+            if (!new RegExp('^\\d{1,3}(\\' + thou + '\\d{3})+$').test(intPart)) return { v: raw };
+            hasThou = true;
+        } else if (!/^\d+$/.test(intPart)) return { v: raw };
+        if (decPart && !/^\d+$/.test(decPart)) return { v: raw };
+        if (!hasThou && !decPart && /[.,]/.test(t)) return { v: raw };
+        // "1.200" ở kiểu vn đã nhận là 1200; ở kiểu en "1.200" là 1,2 (thập phân)
+        const num = parseFloat(intPart.split(thou).join('') + (decPart ? '.' + decPart : ''));
+        if (!isFinite(num)) return { v: raw };
+        let val = neg ? -num : num;
+        let fmt;
+        const d = decPart.length;
+        const base = (hasThou ? '#,##0' : '0') + (d ? '.' + '0'.repeat(d) : '');
+        if (suf === '%') { val = val / 100; fmt = (hasThou ? '#,##0' : '0') + (d ? '.' + '0'.repeat(d) : '') + '%'; }
+        else if (suf || pre) {
+            const s = (pre || suf).replace(/"/g, '');
+            fmt = pre ? '"' + s + '"' + base : base + ' "' + s + '"';
+        } else fmt = base;
+        return { v: val, fmt: fmt };
+    }
+
+    // ---------- Dựng workbook ----------
+    function cluster(vals, tol) {
+        vals = vals.slice().sort((a, b) => a - b);
+        const out = [];
+        vals.forEach(v => { if (out.length && v - out[out.length - 1][out[out.length - 1].length - 1] <= tol) out[out.length - 1].push(v); else out.push([v]); });
+        return out.map(g => g.reduce((a, b) => a + b, 0) / g.length);
+    }
+    function nearIdx(arr, v) { let b = 0, bd = 1e18; arr.forEach((a, i) => { const d = Math.abs(a - v); if (d < bd) { b = i; bd = d; } }); return b; }
+    function colIdxAt(G, x) { let i = 0; for (let k = 0; k < G.length; k++) if (G[k] <= x + 2) i = k; return i; }
+    const argb = h => 'FF' + (h || '000000').replace('#', '').toUpperCase();
+    const safeName = (s, used) => {
+        let n = String(s).replace(/[\[\]:*?\/\\]/g, ' ').trim().slice(0, 31) || 'Sheet';
+        let base = n, k = 2;
+        while (used[n.toLowerCase()]) { n = base.slice(0, 31 - (' (' + k + ')').length) + ' (' + k + ')'; k++; }
+        used[n.toLowerCase()] = 1;
+        return n;
+    };
+
+    function styleCell(cell, c, numMode, numStyle, border) {
+        const f = { name: c.font || 'Calibri', size: Math.max(6, Math.min(72, c.size || 11)), bold: !!c.bold, italic: !!c.italic };
+        if (c.color) f.color = { argb: argb(c.color) };
+        cell.font = f;
+        cell.alignment = { horizontal: c.h || 'left', vertical: c.v || 'middle', wrapText: /\n/.test(c.text || '') || (c.cs || 1) > 0 && (c.wrap !== false) };
+        if (c.fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argb(c.fill) } };
+        if (border) {
+            const b = { style: 'thin', color: { argb: argb(border) } };
+            cell.border = { top: b, left: b, bottom: b, right: b };
+        }
+    }
+
+    function buildSheetPage(wb, pg, o, used) {
+        const ws = wb.addWorksheet(safeName('Trang ' + pg.page, used));
+        const tables = pg.items.filter(i => i.type === 'table');
+        const textSegs = [];
+        pg.items.forEach(it => { if (it.type === 'text') it.segs.forEach(s => textSegs.push(s)); });
+        const cnt = (G, x) => { let n = 0; G.forEach(g => { if (g < x - 3) n++; }); return n; };
+        let xs = [];
+        tables.forEach(t => { xs = xs.concat(t.xs); });
+        let G = cluster(xs, 3);
+        // các bảng có chung lưới cột không? (mỗi ô nằm đúng ô lưới, không bị gộp thêm)
+        let compat = true;
+        tables.forEach(t => {
+            const idx = t.xs.map(x => cnt(G, x));
+            for (let k = 1; k < idx.length; k++) if (idx[k] - idx[k - 1] !== 1) compat = false;
+        });
+        let ref = null;
+        if (!compat) {
+            ref = tables.slice().sort((p, q) => (q.xs.length - p.xs.length) || ((q.x1 - q.x0) - (p.x1 - p.x0)))[0];
+            G = ref.xs.slice(0, -1);
+        }
+        // điểm bắt đầu của chữ nằm ngoài vùng bảng thì thêm cột
+        const tLeft = tables.length ? Math.min.apply(null, tables.map(t => t.xs[0])) : null;
+        const tRight = tables.length ? Math.max.apply(null, tables.map(t => t.xs[t.xs.length - 1])) : null;
+        const extra = [];
+        textSegs.forEach(s => { if (tLeft === null || s.x0 < tLeft - 4 || s.x0 > tRight + 4) extra.push(s.x0); });
+        cluster(extra, 12).forEach(x => { if (G.every(g => Math.abs(g - x) > 6)) G.push(x); });
+        G = cluster(G, 3);
+        if (!G.length) G = [0];
+        const maxX = Math.max(pg.w, G[G.length - 1] + 20, tRight || 0);
+        const endX = (tRight !== null && G[G.length - 1] < tRight - 5) ? tRight : maxX;
+        const widthOf = i => ((i + 1 < G.length ? G[i + 1] : endX) - G[i]);
+        G.forEach((g, i) => { ws.getColumn(i + 1).width = Math.max(2, Math.min(120, widthOf(i) / 5.7)); });
+        // chỉ số cột (0-based) của từng mép cột của bảng
+        const bIdxOf = t => {
+            if (compat || t === ref) return t.xs.map(x => cnt(G, x));
+            return t.xs.map((x, k) => k);
+        };
+        let row = 1, prevY = null;
+        const merges = [];
+        pg.items.forEach(it => {
+            if (prevY !== null && it.y0 - prevY > 4) {
+                ws.getRow(row).height = Math.min(36, it.y0 - prevY);
+                row++;
+            }
+            if (it.type === 'text') {
+                const sz = Math.max.apply(null, it.segs.map(s => s.size));
+                ws.getRow(row).height = Math.max(12, sz * 1.35);
+                let lastCol = -1;
+                it.segs.forEach(s => {
+                    let ci = Math.max(0, Math.min(G.length - 1, cnt(G, s.x0 + 6) - 1));
+                    if (ci <= lastCol) ci = lastCol + 1;
+                    const cell = ws.getCell(row, ci + 1);
+                    const tv = toValue(s.text, o.numStyle, o.numMode);
+                    cell.value = tv.v;
+                    if (tv.fmt) cell.numFmt = tv.fmt;
+                    styleCell(cell, { font: s.font, size: s.size, bold: s.bold, italic: s.italic, color: s.color, h: 'left', v: 'middle', text: s.text, wrap: false });
+                    lastCol = ci;
+                });
+                row++;
+            } else {
+                const start = row;
+                const nR = it.ys.length - 1;
+                for (let r = 0; r < nR; r++) ws.getRow(start + r).height = Math.max(8, it.ys[r + 1] - it.ys[r]);
+                const bi = bIdxOf(it);
+                const needCols = (compat || it === ref) ? 0 : bi[bi.length - 1];
+                for (let k = G.length; k < needCols; k++) {
+                    const j = k; // cột bổ sung cho bảng có nhiều cột hơn bảng tham chiếu
+                    ws.getColumn(j + 1).width = Math.max(2, Math.min(120, (it.xs[Math.min(j + 1, it.xs.length - 1)] - it.xs[Math.min(j, it.xs.length - 1)]) / 5.7));
+                }
+                it.cells.forEach(c => {
+                    const c0 = bi[c.c] + 1;
+                    const cEnd = Math.max(c0, bi[Math.min(c.c + c.cs, bi.length - 1)]);
+                    const r0 = start + c.r, r1 = start + c.r + c.rs - 1;
+                    const tv = toValue(c.text, o.numStyle, o.numMode);
+                    const cell = ws.getCell(r0, c0);
+                    cell.value = tv.v;
+                    if (tv.fmt) cell.numFmt = tv.fmt;
+                    styleCell(cell, c, o.numMode, o.numStyle, it.border);
+                    if (cEnd > c0 || r1 > r0) {
+                        for (let rr = r0; rr <= r1; rr++) for (let cc = c0; cc <= cEnd; cc++) {
+                            if (rr === r0 && cc === c0) continue;
+                            const x = ws.getCell(rr, cc);
+                            if (c.fill) x.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argb(c.fill) } };
+                            if (it.border) { const b = { style: 'thin', color: { argb: argb(it.border) } }; x.border = { top: b, left: b, bottom: b, right: b }; }
+                        }
+                        merges.push([r0, c0, r1, cEnd]);
+                    }
+                });
+                row = start + nR;
+            }
+            prevY = it.y1;
+        });
+        merges.forEach(m => { try { ws.mergeCells(m[0], m[1], m[2], m[3]); } catch (e) {} });
+        ws.pageSetup = { orientation: pg.w > pg.h ? 'landscape' : 'portrait', paperSize: 9, fitToPage: !!o.fit, fitToWidth: 1, fitToHeight: 0 };
+        return ws;
+    }
+
+    function buildSheetTable(wb, pg, it, idx, o, used) {
+        const ws = wb.addWorksheet(safeName('Bảng ' + idx + ' (Trang ' + pg.page + ')', used));
+        const G = it.xs;
+        for (let i = 0; i < G.length - 1; i++) ws.getColumn(i + 1).width = Math.max(2, Math.min(120, (G[i + 1] - G[i]) / 5.7));
+        const nR = it.ys.length - 1;
+        for (let r = 0; r < nR; r++) ws.getRow(r + 1).height = Math.max(8, it.ys[r + 1] - it.ys[r]);
+        const merges = [];
+        it.cells.forEach(c => {
+            const c0 = c.c + 1, c1 = Math.min(G.length - 1, c.c + c.cs), r0 = c.r + 1, r1 = c.r + c.rs;
+            const tv = toValue(c.text, o.numStyle, o.numMode);
+            const cell = ws.getCell(r0, c0);
+            cell.value = tv.v;
+            if (tv.fmt) cell.numFmt = tv.fmt;
+            styleCell(cell, c, o.numMode, o.numStyle, it.border);
+            if (c1 > c0 || r1 > r0) {
+                for (let rr = r0; rr <= r1; rr++) for (let cc = c0; cc <= c1; cc++) {
+                    if (rr === r0 && cc === c0) continue;
+                    const x = ws.getCell(rr, cc);
+                    if (c.fill) x.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argb(c.fill) } };
+                    if (it.border) { const b = { style: 'thin', color: { argb: argb(it.border) } }; x.border = { top: b, left: b, bottom: b, right: b }; }
+                }
+                merges.push([r0, c0, r1, c1]);
+            }
+        });
+        merges.forEach(m => { try { ws.mergeCells(m[0], m[1], m[2], m[3]); } catch (e) {} });
+        ws.pageSetup = { orientation: pg.w > pg.h ? 'landscape' : 'portrait', paperSize: 9, fitToPage: !!o.fit, fitToWidth: 1, fitToHeight: 0 };
+    }
+
+    async function buildWorkbook(pages, o) {
+        await ensureExcelJS();
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'PDF tool by hachihi.vn';
+        o.numStyle = detectNumStyle(pages, o.numMode);
+        const used = {};
+        let tcount = 0, sheetCount = 0;
+        pages.forEach(pg => {
+            if (o.mode === 'table') {
+                pg.items.filter(i => i.type === 'table').forEach(it => { buildSheetTable(wb, pg, it, ++tcount, o, used); sheetCount++; });
+            } else if (pg.items.length) { buildSheetPage(wb, pg, o, used); sheetCount++; }
+        });
+        if (!sheetCount) return null;
+        const buf = await wb.xlsx.writeBuffer();
+        return { blob: new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), sheets: sheetCount, tables: pages.reduce((n, p) => n + p.items.filter(i => i.type === 'table').length, 0) };
+    }
+
+    // ---------- Giao diện ----------
+    function render() {
+        const list = $('w2x-list');
+        if (!items.length) {
+            list.innerHTML = '<div style="color:gray; font-style:italic; text-align:center; padding-top:40px;">Chưa chọn file nào. Kéo thả PDF vào đây hoặc bấm "Chọn file PDF".</div>';
+        } else {
+            list.innerHTML = '';
+            items.forEach(it => {
+                const row = document.createElement('div');
+                row.style.cssText = 'background:#fff; border:1px solid #d2d0ce; border-radius:6px; padding:10px; display:flex; align-items:center; gap:10px;';
+                const colors = { wait: '#605e5c', run: '#005a9e', ok: '#107c41', err: '#a80000' };
+                row.innerHTML = '<div style="flex:1; min-width:0;"><div style="font-weight:600; font-size:13px; word-break:break-all;">' + esc(it.file.name) + '</div>' +
+                    '<div style="font-size:11px; color:#605e5c;">' + fmtBytes(it.file.size) + (it.numPages ? ' • ' + it.numPages + ' trang' : '') + '</div>' +
+                    '<div style="font-size:12px; margin-top:3px; color:' + colors[it.status] + ';">' + esc(it.text || '') + '</div>' +
+                    (it.warn ? '<div style="font-size:11px; color:#b45309; margin-top:2px;">⚠ ' + esc(it.warn) + '</div>' : '') + '</div>';
+                const act = document.createElement('div');
+                act.style.cssText = 'display:flex; gap:6px; flex-shrink:0;';
+                if (it.blob) {
+                    const b = document.createElement('button');
+                    b.className = 'btn btn-small btn-success';
+                    b.textContent = '⬇ Tải .xlsx';
+                    b.onclick = () => dl(it);
+                    act.appendChild(b);
+                }
+                if (!busy) {
+                    const d = document.createElement('button');
+                    d.className = 'btn btn-small btn-danger';
+                    d.textContent = '✕';
+                    d.title = 'Bỏ file này';
+                    d.onclick = () => { items = items.filter(x => x !== it); render(); };
+                    act.appendChild(d);
+                }
+                row.appendChild(act);
+                list.appendChild(row);
+            });
+        }
+        $('w2x-run-btn').disabled = busy || !items.length;
+        $('w2x-zip-btn').style.display = items.filter(i => i.blob).length > 1 ? 'flex' : 'none';
+        $('w2x-clear-btn').style.display = items.length && !busy ? 'flex' : 'none';
+    }
+
+    function dl(it) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(it.blob);
+        a.download = it.name;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    }
+
+    async function addFiles(fileList) {
+        const files = Array.from(fileList || []).filter(f => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+        for (const f of files) {
+            const it = { id: ++seq, file: f, status: 'wait', text: 'Chờ chuyển đổi' };
+            items.push(it);
+            try {
+                const buf = await f.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buf.slice(0)) }).promise;
+                it.numPages = pdf.numPages;
+                let chars = 0;
+                for (let p = 1; p <= Math.min(3, pdf.numPages); p++) {
+                    const tc = await (await pdf.getPage(p)).getTextContent();
+                    tc.items.forEach(x => { chars += (x.str || '').trim().length; });
+                }
+                if (!chars) it.warn = 'PDF này có vẻ là bản scan (không có chữ thật) nên không trích được bảng. Cần OCR trước.';
+            } catch (e) {
+                it.warn = 'Không đọc được thông tin file (có thể bị đặt mật khẩu).';
+            }
+            render();
+        }
+    }
+
+    function extractOne(it) {
+        return new Promise((resolve, reject) => {
+            const fn = m => {
+                if (m.type === 'progress') {
+                    const mm = /(\d+)\/(\d+)/.exec(m.msg);
+                    if (mm) setProgress((+mm[1] - 1) / +mm[2] * 100, it.file.name + ': ' + m.msg);
+                } else if (m.type === 'done' && m.id === it.id) { listeners.delete(fn); resolve(JSON.parse(m.json)); }
+                else if (m.type === 'error' && m.id === it.id) { listeners.delete(fn); reject(new Error(m.message)); }
+            };
+            listeners.add(fn);
+            it.file.arrayBuffer().then(buf => {
+                const pages = parsePages($('w2x-pages').value, it.numPages);
+                if (pages && !pages.length) { listeners.delete(fn); reject(new Error('Khoảng trang không hợp lệ.')); return; }
+                worker.postMessage({ type: 'extract', id: it.id, bytes: buf, opts: { pages: pages, stream: $('w2x-stream').checked } }, [buf]);
+            }).catch(e => { listeners.delete(fn); reject(e); });
+        });
+    }
+
+    async function run() {
+        if (busy || !items.length) return;
+        busy = true;
+        render();
+        let ok = 0;
+        try {
+            setProgress(0, 'Đang tải bộ chuyển đổi (lần đầu ~55 MB, các lần sau nhanh hơn)...');
+            await ensureEngine();
+            for (let i = 0; i < items.length; i++) {
+                const it = items[i];
+                if (it.blob) continue;
+                it.status = 'run'; it.text = 'Đang đọc bảng và định dạng...';
+                render();
+                setProgress(0, 'Đang chuyển ' + it.file.name + ' (' + (i + 1) + '/' + items.length + ')...');
+                try {
+                    const pages = await extractOne(it);
+                    setProgress(100, 'Đang tạo file Excel cho ' + it.file.name + '...');
+                    const out = await buildWorkbook(pages, { mode: $('w2x-mode').value, numMode: $('w2x-num').value, fit: $('w2x-fit').checked });
+                    if (!out) { it.status = 'err'; it.text = 'Không tìm thấy bảng hoặc chữ nào để đưa vào Excel.'; render(); continue; }
+                    it.blob = out.blob;
+                    it.name = it.file.name.replace(/\.pdf$/i, '') + '.xlsx';
+                    it.status = 'ok'; it.text = 'Xong • ' + out.sheets + ' sheet • ' + out.tables + ' bảng • ' + fmtBytes(out.blob.size);
+                    if (!out.tables && $('w2x-mode').value === 'page') it.warn = 'Không có bảng có đường viền, chữ được xếp theo vị trí. Thử bật "Dò cả bảng không có đường viền".';
+                    ok++;
+                    if (typeof logAction === 'function') logAction('pdf_to_excel');
+                    if (items.length === 1) dl(it);
+                } catch (e) {
+                    it.status = 'err'; it.text = 'Lỗi: ' + (e.message || e);
+                }
+                render();
+            }
+            setProgress(100, ok ? 'Hoàn tất: đã chuyển ' + ok + ' file.' : 'Không chuyển được file nào.');
+        } catch (e) {
+            setProgress(0, 'Không tải được bộ chuyển đổi: ' + (e.message || e) + '. Kiểm tra kết nối mạng hoặc địa chỉ nguồn ở mục Nâng cao.');
+            items.forEach(it => { if (it.status === 'run') { it.status = 'err'; it.text = 'Chưa chuyển được'; } });
+        } finally {
+            busy = false;
+            render();
+        }
+    }
+
+    async function zipAll() {
+        const done = items.filter(i => i.blob);
+        if (!done.length) return;
+        if (typeof JSZip === 'undefined') {
+            try { await loadScript(['https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js']); } catch (e) { alert('Không tải được thư viện nén ZIP'); return; }
+        }
+        const zip = new JSZip(), used = {};
+        for (const it of done) {
+            let n = it.name; if (used[n]) { used[n]++; n = n.replace(/\.xlsx$/, '') + ' (' + used[n] + ').xlsx'; } else used[n] = 1;
+            zip.file(n, it.blob);
+        }
+        dl({ blob: await zip.generateAsync({ type: 'blob' }), name: 'pdf-to-excel.zip' });
+    }
+
+    function init() {
+        const inp = $('w2x-input');
+        if (!inp) return;
+        inp.addEventListener('change', () => { addFiles(inp.files); inp.value = ''; });
+        $('w2x-run-btn').addEventListener('click', run);
+        $('w2x-zip-btn').addEventListener('click', zipAll);
+        $('w2x-clear-btn').addEventListener('click', () => { items = []; $('w2x-progress-wrap').style.display = 'none'; render(); });
+        const drop = $('w2x-drop');
+        drop.addEventListener('dragover', e => { e.preventDefault(); drop.style.outline = '2px dashed var(--primary)'; });
+        drop.addEventListener('dragleave', () => { drop.style.outline = ''; });
+        drop.addEventListener('drop', e => { e.preventDefault(); drop.style.outline = ''; addFiles(e.dataTransfer.files); });
+        render();
+    }
+    window._w2x = { get items() { return items; }, run: run, addFiles: addFiles };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
 </script>
