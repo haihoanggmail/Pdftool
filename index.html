@@ -3298,7 +3298,7 @@ function redrawPageShapes() {
 }
 
 async function editorLoadFile(input) {
-	logAction("edit_pdf");
+
     const file = input.files[0];
     if (!file) return;
     editorFileName = file.name.replace(/\.pdf$/i, '');
