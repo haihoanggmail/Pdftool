@@ -864,7 +864,7 @@ function getEmbeddedFont(style) {
                     <button class="btn btn-small btn-tool" onclick="editorZoomBy(1)" title="Phóng to">➕</button>
                     <button class="btn btn-small btn-tool" onclick="editorZoomFit()" title="Vừa chiều ngang khung">↔ Vừa khung</button>
                     <button class="btn btn-small btn-warning" onclick="printEditorStage()" style="margin-left: 15px;">🖨️ IN TRANG NÀY</button>
-					<button class="btn btn-small btn-success" onclick="printAllEditorPages()">📚 IN TOÀN BỘ</button>
+					<button class="btn btn-small btn-success" onclick="editorExportPDF()">📚 XUẤT PDF</button>
                 </div>
 				
                 <div class="editor-stage-scroll">
@@ -5106,15 +5106,8 @@ function printEditorStage() {
     printEditorPages([ editorPage ]);
 }
 
-function printAllEditorPages() {
-    if (!editorPdfJsDoc) {
-        alert('Chưa mở PDF!');
-        return;
-    }
-    printEditorPages(Array.from({
-        length: editorPdfJsDoc.numPages
-    }, (_, i) => i + 1));
-}
+
+
 </script>
 
 <script>
