@@ -268,6 +268,19 @@ function getEmbeddedFont(style) {
         .compare-pane canvas { box-shadow: 0 2px 6px rgba(0,0,0,0.15); max-width: 100%; margin-bottom: 20px; background: white; }
         .overlay-container { display: none; position: relative; width: 100%; height: 100%; overflow-y: auto; overflow-x: auto; background: #f3f2f1; border: 1px solid #d2d0ce; border-radius: 4px; padding: 10px; box-sizing: border-box; }
         .overlay-wrapper { position: relative; display: inline-block; margin: 0 auto; text-align: left; }
+        .compare-pane .cmp-page { position: relative; display: inline-block; margin-bottom: 20px; line-height: 0; max-width: 100%; }
+        .compare-pane .cmp-page canvas { margin-bottom: 0; display: block; }
+        .cmp-hl-layer { position: absolute; left: 0; top: 0; right: 0; bottom: 0; pointer-events: none; }
+        .overlay-wrapper > .cmp-hl-layer { z-index: 5; }
+        .cmp-hl-box { position: absolute; border: 1px solid; border-radius: 2px; box-sizing: border-box; pointer-events: auto; cursor: pointer; mix-blend-mode: multiply; }
+        .cmp-hl-box.cmp-flash { animation: cmpflash 1.4s ease-out; outline: 2px solid #111; outline-offset: 1px; }
+        @keyframes cmpflash { 0%,40% { outline-color: #111; box-shadow: 0 0 0 4px rgba(255,255,255,.9); } 100% { outline-color: transparent; box-shadow: none; } }
+        .cmp-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; }
+        .cmp-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+        .cmp-row { display: flex; gap: 8px; align-items: flex-start; padding: 6px; border-radius: 4px; cursor: pointer; border: 1px solid transparent; }
+        .cmp-row:hover { background: rgba(127,127,127,.12); }
+        .cmp-row.active { border-color: var(--primary); background: rgba(0,120,212,.12); }
+        .cmp-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
         .overlay-canvas { position: absolute; top: 0; left: 0; box-shadow: 0 2px 6px rgba(0,0,0,0.15); background: white; }
         .overlay-canvas:first-child { position: relative; }
         .visibility-controls { display: none; margin-top: 12px; flex-direction: column; gap: 8px; padding-left: 20px;}
@@ -665,8 +678,25 @@ function getEmbeddedFont(style) {
                     </div>
                 </div>
 
+                <div class="card">
+                    <p class="card-title">3. Tự động phát hiện khác biệt</p>
+                    <label style="font-size: 13px; display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 6px;">
+                        <input type="checkbox" id="cmp-auto" checked onchange="cmpToggleAuto()"> Tô màu các điểm khác biệt
+                    </label>
+                    <div id="cmp-global" class="editor-hint" style="margin:0 0 6px;">Chọn đủ File A và File B để tự động phát hiện khác biệt.</div>
+                    <div style="display:flex; gap:6px; margin-bottom:6px;">
+                        <button class="btn btn-small" style="flex:1" onclick="cmpNavDiff(-1)">◀ Khác biệt trước</button>
+                        <button class="btn btn-small" style="flex:1" onclick="cmpNavDiff(1)">Khác biệt sau ▶</button>
+                    </div>
+                    <div class="cmp-legend">
+                        <span><i style="background:#22c55e"></i>Thêm</span><span><i style="background:#ef4444"></i>Xóa</span><span><i style="background:#f59e0b"></i>Sửa</span><span><i style="background:#a855f7"></i>Di chuyển</span><span><i style="background:#3b82f6"></i>Cỡ chữ</span><span><i style="background:#06b6d4"></i>Hình/đồ họa</span>
+                    </div>
+                    <div id="cmp-pairinfo" class="editor-hint" style="margin:6px 0 2px; font-weight:600;"></div>
+                    <div id="cmp-list" style="max-height:260px; overflow-y:auto;"></div>
+                </div>
+
                 <div class="card" style="margin-top: auto;">
-                    <p class="card-title">3. Điều hướng trang</p>
+                    <p class="card-title">4. Điều hướng trang</p>
                     <div style="display:flex; justify-content: space-between; align-items: center; gap:10px;">
                         <button class="btn btn-small" onclick="changeComparePage(-1)" style="flex:1">◀ Trước</button>
                         <span id="compare-page-indicator" style="font-weight:bold; font-size:14px; width: 60px; text-align: center;">0 / 0</span>
@@ -903,11 +933,6 @@ function getEmbeddedFont(style) {
                     Hỗ trợ vẽ tự do, đường thẳng, hình vuông, hình tròn,
                     mũi tên, elip chuẩn vector với nét vẽ tùy biến.
                 </li>
-				   <li>
-                    <b>PDF - > Word:</b>
-                    Chuyển file PDF ra file Word:
-                </li>
-				
 
                 <li>
                     <b>Hoàn toàn Client-Side:</b>
@@ -1854,66 +1879,709 @@ function applyViewFilter(filterValue) {
     }
 }
 
+// ===================== So sánh tự động: ghép trang + so từng từ + so điểm ảnh =====================
+const CMP = { pairs: null, d1: null, d2: null, results: {}, wordsCache: new WeakMap(), activeId: null, bgToken: 0, pendingFocus: null, wrapA: null, wrapB: null, wrapO: null, scale: 1.3 };
+const CMP_COLORS = { added: '#22c55e', removed: '#ef4444', modified: '#f59e0b', moved: '#a855f7', style: '#3b82f6', visual: '#06b6d4', page: '#64748b' };
+const CMP_LABEL = { added: 'Thêm', removed: 'Xóa', modified: 'Sửa', moved: 'Di chuyển', style: 'Cỡ chữ', visual: 'Hình/đồ họa', page: 'Trang' };
+
+function cmpNorm(s) {
+    return String(s).normalize('NFKC').replace(/[​-‏­﻿\u0000-\u001f\u{E000}-\u{F8FF}]/gu, '').toLowerCase();
+}
+
+async function cmpGetWords(doc, pageNo) {
+    let m = CMP.wordsCache.get(doc);
+    if (!m) { m = new Map(); CMP.wordsCache.set(doc, m); }
+    if (m.has(pageNo)) return m.get(pageNo);
+    const page = await doc.getPage(pageNo);
+    const vp = page.getViewport({ scale: 1 });
+    const tc = await page.getTextContent();
+    const items = [];
+    for (const it of tc.items) {
+        if (!('str' in it) || !it.str || !it.str.trim()) continue;
+        const t = pdfjsLib.Util.transform(vp.transform, it.transform);
+        const fs = Math.hypot(t[2], t[3]) || it.height || 10;
+        items.push({ str: it.str, x: t[4], yb: t[5], w: (it.width || 0) * vp.scale, fs: fs });
+    }
+    items.sort((a, b) => a.yb - b.yb || a.x - b.x);
+    const lines = [];
+    items.forEach(it => {
+        const ln = lines[lines.length - 1];
+        if (ln && Math.abs(it.yb - ln.yb) < Math.max(2, 0.5 * it.fs)) { ln.items.push(it); ln.yb = (ln.yb * (ln.items.length - 1) + it.yb) / ln.items.length; }
+        else lines.push({ yb: it.yb, items: [it] });
+    });
+    const words = [];
+    lines.forEach(ln => {
+        ln.items.sort((a, b) => a.x - b.x);
+        let prev = null, prevEnd = 0, prevItemEndsClean = false;
+        ln.items.forEach(it => {
+            const len = it.str.length || 1, re = /\S+/g;
+            let mt, first = true;
+            while ((mt = re.exec(it.str))) {
+                const wx = it.x + (mt.index / len) * it.w, ww = (mt[0].length / len) * it.w;
+                const word = { t: mt[0], x: wx, y: it.yb - it.fs * 0.95, w: ww, h: it.fs * 1.2, fs: it.fs };
+                const startsClean = mt.index === 0;
+                if (first && startsClean && prev && prevItemEndsClean && (it.x - prevEnd) < 0.2 * it.fs && (it.x - prevEnd) > -0.5 * it.fs) {
+                    const x2 = Math.max(prev.x + prev.w, word.x + word.w);
+                    prev.t += word.t; prev.w = x2 - prev.x;
+                } else {
+                    words.push(word); prev = word;
+                }
+                first = false;
+            }
+            prevEnd = it.x + it.w;
+            prevItemEndsClean = !/\s$/.test(it.str);
+            if (!first) { /* prev đã trỏ tới từ cuối */ }
+        });
+    });
+    const out = [];
+    words.forEach(w => { const k = cmpNorm(w.t); if (k.trim()) { w.k = k; out.push(w); } });
+    const res = { words: out, W: vp.width, H: vp.height, hasText: out.length > 0, plain: out.slice(0, 500).map(w => w.k).join(' ') };
+    m.set(pageNo, res);
+    return res;
+}
+
+function cmpSimilarity(a, b, same) {
+    if (!a.hasText && !b.hasText) return same ? 0.7 : 0.35;
+    if (!a.hasText || !b.hasText) return 0.08;
+    const A = new Set(a.plain.split(' ')), B = new Set(b.plain.split(' '));
+    let inter = 0; A.forEach(t => { if (B.has(t)) inter++; });
+    const union = new Set([...A, ...B]).size;
+    return Math.min((union ? inter / union : 0) + (same ? 0.1 : 0), 1);
+}
+
+function cmpPairPages(sa, sb) {
+    const ins = 0.8, R = sa.length + 1, C = sb.length + 1;
+    const dp = Array.from({ length: R }, () => new Float64Array(C));
+    const bt = Array.from({ length: R }, () => new Uint8Array(C)); // 0 match,1 left,2 right
+    for (let i = 1; i < R; i++) { dp[i][0] = i * ins; bt[i][0] = 1; }
+    for (let j = 1; j < C; j++) { dp[0][j] = j * ins; bt[0][j] = 2; }
+    const simCache = {};
+    const sim = (i, j) => { const k = i + ',' + j; return simCache[k] !== undefined ? simCache[k] : (simCache[k] = cmpSimilarity(sa[i], sb[j], i === j)); };
+    for (let i = 1; i < R; i++) for (let j = 1; j < C; j++) {
+        const m = dp[i - 1][j - 1] + (1 - sim(i - 1, j - 1)), l = dp[i - 1][j] + ins, r = dp[i][j - 1] + ins;
+        const mn = Math.min(m, l, r);
+        dp[i][j] = mn; bt[i][j] = mn === m ? 0 : (mn === l ? 1 : 2);
+    }
+    const pairs = [];
+    let i = sa.length, j = sb.length;
+    while (i > 0 || j > 0) {
+        const d = bt[i][j];
+        if (i > 0 && j > 0 && d === 0) { pairs.push({ l: i, r: j, conf: sim(i - 1, j - 1) }); i--; j--; }
+        else if (i > 0 && (j === 0 || d === 1)) { pairs.push({ l: i, r: null, conf: 0 }); i--; }
+        else { pairs.push({ l: null, r: j, conf: 0 }); j--; }
+    }
+    return pairs.reverse();
+}
+
+async function ensureComparePairs() {
+    if (CMP.pairs && CMP.d1 === compareDoc1 && CMP.d2 === compareDoc2) return;
+    CMP.d1 = compareDoc1; CMP.d2 = compareDoc2; CMP.results = {}; CMP.bgToken++; CMP.activeId = null;
+    const sig = async doc => {
+        const out = [];
+        if (!doc) return out;
+        for (let p = 1; p <= doc.numPages; p++) out.push(await cmpGetWords(doc, p));
+        return out;
+    };
+    const sa = await sig(compareDoc1), sb = await sig(compareDoc2);
+    if (compareDoc1 && compareDoc2) CMP.pairs = cmpPairPages(sa, sb);
+    else if (compareDoc1) CMP.pairs = sa.map((s, i) => ({ l: i + 1, r: null, conf: 0 }));
+    else CMP.pairs = sb.map((s, i) => ({ l: null, r: i + 1, conf: 0 }));
+    maxComparePages = CMP.pairs.length;
+    if (currentComparePage < 1) currentComparePage = 1;
+    if (currentComparePage > maxComparePages) currentComparePage = Math.max(maxComparePages, 1);
+    cmpStartBackground();
+}
+
+function cmpDiffOps(a, b) {
+    const na = a.length, nb = b.length;
+    let s = 0;
+    while (s < na && s < nb && a[s] === b[s]) s++;
+    let ea = na, eb = nb;
+    while (ea > s && eb > s && a[ea - 1] === b[eb - 1]) { ea--; eb--; }
+    const ops = [];
+    for (let i = 0; i < s; i++) ops.push(0);
+    const n = ea - s, m = eb - s;
+    if (n === 0 || m === 0 || n * m > 16e6) {
+        for (let i = 0; i < n; i++) ops.push(1);
+        for (let j = 0; j < m; j++) ops.push(2);
+    } else {
+        const W = m + 1, dp = new Uint16Array((n + 1) * W);
+        for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+            dp[i * W + j] = a[s + i] === b[s + j] ? dp[(i + 1) * W + j + 1] + 1 : Math.max(dp[(i + 1) * W + j], dp[i * W + j + 1]);
+        let i = 0, j = 0;
+        while (i < n && j < m) {
+            if (a[s + i] === b[s + j]) { ops.push(0); i++; j++; }
+            else if (dp[(i + 1) * W + j] >= dp[i * W + j + 1]) { ops.push(1); i++; }
+            else { ops.push(2); j++; }
+        }
+        while (i < n) { ops.push(1); i++; }
+        while (j < m) { ops.push(2); j++; }
+    }
+    for (let i = ea; i < na; i++) ops.push(0);
+    return ops;
+}
+
+function cmpGroupRects(words, W, H) {
+    if (!words.length) return [];
+    const sorted = words.slice().sort((p, q) => p.y - q.y || p.x - q.x);
+    const groups = [[sorted[0]]];
+    for (let i = 1; i < sorted.length; i++) {
+        const g = groups[groups.length - 1], last = g[g.length - 1], cur = sorted[i];
+        if (Math.abs(cur.y - last.y) < Math.max(last.h * 0.6, 4) && cur.x <= last.x + last.w + last.h * 2) g.push(cur);
+        else groups.push([cur]);
+    }
+    return groups.map(g => {
+        const x0 = Math.min(...g.map(w => w.x)), y0 = Math.min(...g.map(w => w.y));
+        const x1 = Math.max(...g.map(w => w.x + w.w)), y1 = Math.max(...g.map(w => w.y + w.h));
+        return { x: x0 / W, y: y0 / H, w: (x1 - x0) / W, h: (y1 - y0) / H };
+    });
+}
+
+function cmpLongestCommon(D, E) {
+    // đoạn con liên tiếp dài nhất giữa hai dãy từ (so theo khóa chuẩn hóa)
+    let best = { len: 0, di: 0, ei: 0 };
+    let prev = new Uint16Array(E.length + 1);
+    for (let i = 1; i <= D.length; i++) {
+        const cur = new Uint16Array(E.length + 1);
+        for (let j = 1; j <= E.length; j++) {
+            if (D[i - 1].k === E[j - 1].k) {
+                cur[j] = prev[j - 1] + 1;
+                if (cur[j] > best.len) best = { len: cur[j], di: i - cur[j], ei: j - cur[j] };
+            }
+        }
+        prev = cur;
+    }
+    return best;
+}
+
+function cmpTextChanges(A, B) {
+    const ops = cmpDiffOps(A.words.map(w => w.k), B.words.map(w => w.k));
+    const styleGroups = {}, anchors = [];
+    const blocks = [];
+    let ai = 0, bi = 0, k = 0;
+    const txt = ws => ws.map(w => w.t).join(' ');
+    while (k < ops.length) {
+        if (ops[k] === 0) {
+            const wa = A.words[ai], wb = B.words[bi];
+            if (wa && wb) {
+                anchors.push({ ya: (wa.y + wa.h / 2) / A.H, yb: (wb.y + wb.h / 2) / B.H });
+                if (Math.abs(wa.fs - wb.fs) > 0.5 && Math.abs(wa.fs - wb.fs) / Math.max(wa.fs, wb.fs) > 0.06) {
+                    const key = wa.fs.toFixed(1) + '→' + wb.fs.toFixed(1);
+                    (styleGroups[key] = styleGroups[key] || { a: [], b: [] });
+                    styleGroups[key].a.push(wa); styleGroups[key].b.push(wb);
+                }
+            }
+            ai++; bi++; k++; continue;
+        }
+        const a0 = ai, b0 = bi;
+        while (k < ops.length && ops[k] !== 0) { if (ops[k] === 1) ai++; else bi++; k++; }
+        blocks.push({ dw: A.words.slice(a0, ai), aw: B.words.slice(b0, bi) });
+    }
+    // Đoạn chữ (>= 4 từ liên tiếp) xuất hiện ở cả phía bị xóa và phía được thêm => đã di chuyển
+    const result = [];
+    for (let iter = 0; iter < 40; iter++) {
+        let best = null;
+        for (let i = 0; i < blocks.length; i++) {
+            if (blocks[i].dw.length < 4) continue;
+            for (let j = 0; j < blocks.length; j++) {
+                if (blocks[j].aw.length < 4) continue;
+                const m = cmpLongestCommon(blocks[i].dw, blocks[j].aw);
+                if (m.len >= 4 && (!best || m.len > best.len)) best = { i: i, j: j, len: m.len, di: m.di, ei: m.ei };
+            }
+        }
+        if (!best) break;
+        const dseg = blocks[best.i].dw.splice(best.di, best.len);
+        const aseg = blocks[best.j].aw.splice(best.ei, best.len);
+        result.push({ type: 'moved', before: txt(dseg), after: txt(aseg), bRects: cmpGroupRects(dseg, A.W, A.H), aRects: cmpGroupRects(aseg, B.W, B.H), bw: dseg.length, aw: aseg.length });
+    }
+    const changes = [];
+    blocks.forEach(bl => {
+        const dw = bl.dw, aw = bl.aw;
+        if (dw.length && aw.length) {
+            if (dw.map(w => w.k).join('') === aw.map(w => w.k).join('')) return;
+            changes.push({ type: 'modified', before: txt(dw), after: txt(aw), bRects: cmpGroupRects(dw, A.W, A.H), aRects: cmpGroupRects(aw, B.W, B.H), bw: dw.length, aw: aw.length });
+        } else if (dw.length) {
+            changes.push({ type: 'removed', before: txt(dw), after: '', bRects: cmpGroupRects(dw, A.W, A.H), aRects: [], bw: dw.length, aw: 0 });
+        } else if (aw.length) {
+            changes.push({ type: 'added', before: '', after: txt(aw), bRects: [], aRects: cmpGroupRects(aw, B.W, B.H), bw: 0, aw: aw.length });
+        }
+    });
+    // Di chuyển gần đúng (>= 80% từ trùng) giữa một đoạn xóa và một đoạn thêm
+    const rem = changes.filter(c => c.type === 'removed'), add = changes.filter(c => c.type === 'added');
+    const used = new Set();
+    rem.forEach(r => {
+        const rw = r.before.toLowerCase().split(/\s+/);
+        if (rw.length < 3) return;
+        let best = null, bestS = 0.8;
+        add.forEach(a => {
+            if (used.has(a)) return;
+            const aw = a.after.toLowerCase().split(/\s+/), set = new Set(aw);
+            let m = 0; rw.forEach(w => { if (set.has(w)) m++; });
+            const sc = m / Math.max(rw.length, aw.length);
+            if (sc > bestS) { bestS = sc; best = a; }
+        });
+        if (best) {
+            used.add(best); used.add(r);
+            result.push({ type: 'moved', before: r.before, after: best.after, bRects: r.bRects, aRects: best.aRects, bw: r.bw, aw: best.aw });
+        }
+    });
+    changes.forEach(c => { if (!used.has(c)) result.push(c); });
+    Object.keys(styleGroups).forEach(key => {
+        const g = styleGroups[key];
+        result.push({ type: 'style', before: txt(g.a.slice(0, 12)) + (g.a.length > 12 ? ' …' : ''), after: 'Cỡ chữ ' + key.replace('→', ' → '), bRects: cmpGroupRects(g.a, A.W, A.H), aRects: cmpGroupRects(g.b, B.W, B.H), bw: g.a.length, aw: g.b.length });
+    });
+    // sắp xếp theo vị trí xuất hiện trên trang
+    const posOf = c => { const r = (c.bRects[0] || c.aRects[0]); return r ? r.y : 2; };
+    result.sort((p, q) => posOf(p) - posOf(q));
+    return { changes: result, anchors: anchors };
+}
+
+// Làm mờ nhẹ (dọc 5 hàng, ngang 3 cột): đường kẻ mảnh bị lệch phần lẻ điểm ảnh vẫn giữ tổng độ đậm như nhau
+function cmpBlur(src, w, h) {
+    const tmp = new Uint8Array(src.length), out = new Uint8Array(src.length);
+    for (let x = 0; x < w; x++) for (let c = 0; c < 3; c++) {
+        let sum = 0, cnt = 0;
+        for (let y = 0; y < Math.min(3, h); y++) { sum += src[(y * w + x) * 4 + c]; cnt++; }
+        for (let y = 0; y < h; y++) {
+            tmp[(y * w + x) * 4 + c] = Math.round(sum / cnt);
+            const add = y + 3, rem = y - 2;
+            if (add < h) { sum += src[(add * w + x) * 4 + c]; cnt++; }
+            if (rem >= 0) { sum -= src[(rem * w + x) * 4 + c]; cnt--; }
+        }
+    }
+    for (let y = 0; y < h; y++) for (let c = 0; c < 3; c++) {
+        const row = y * w * 4;
+        for (let x = 0; x < w; x++) {
+            const x0 = Math.max(0, x - 1), x1 = Math.min(w - 1, x + 1);
+            let sum = 0;
+            for (let xx = x0; xx <= x1; xx++) sum += tmp[row + xx * 4 + c];
+            out[row + x * 4 + c] = Math.round(sum / (x1 - x0 + 1));
+        }
+    }
+    return out;
+}
+
+function cmpVisualChanges(cvA, cvB, A, B, anchors, textChanges) {
+    const w = cvA.width, h = cvA.height, hB = cvB.height;
+    if (Math.abs(w - cvB.width) > 2 || Math.abs(h - hB) > 2) {
+        return [{ type: 'page', before: '', after: 'Hai trang có kích thước khác nhau nên không so được hình ảnh.', bRects: [], aRects: [], label: 'Khác kích thước trang' }];
+    }
+    const dA = cvA.getContext('2d').getImageData(0, 0, w, h).data;
+    const dB = cvB.getContext('2d').getImageData(0, 0, cvB.width, hB).data;
+    const wB = cvB.width;
+    const bA = cmpBlur(dA, w, h), bB = cmpBlur(dB, wB, hB);
+    // Dịch dọc theo từng hàng: lấy độ lệch của từ khớp gần nhất (bù trường hợp nội dung bị đẩy xuống/lên)
+    const anc = (anchors || []).slice().sort((p, q) => p.ya - q.ya);
+    const shift = new Int32Array(h);
+    if (anc.length) {
+        let ptr = 0;
+        for (let y = 0; y < h; y++) {
+            const fy = y / h;
+            while (ptr + 1 < anc.length && Math.abs(anc[ptr + 1].ya - fy) <= Math.abs(anc[ptr].ya - fy)) ptr++;
+            shift[y] = Math.round((anc[ptr].yb - anc[ptr].ya) * hB);
+        }
+    }
+    const C = 8, gw = Math.ceil(w / C), gh = Math.ceil(h / C);
+    const cnt = new Uint16Array(gw * gh);
+    for (let y = 0; y < h; y++) {
+        const y2 = y + shift[y];
+        if (y2 < 0 || y2 >= hB) continue;
+        const gy = (y / C | 0) * gw;
+        for (let x = 0; x < w; x++) {
+            const p = (y * w + x) * 4, q = (y2 * wB + x) * 4;
+            let d = Math.abs(dA[p] - dB[q]) + Math.abs(dA[p + 1] - dB[q + 1]) + Math.abs(dA[p + 2] - dB[q + 2]);
+            if (d > 90) {
+                // Dung sai lệch dưới 1 điểm ảnh: đường kẻ/viền bị đẩy lệch phần lẻ pixel sẽ có mức xám khử răng cưa khác nhau.
+                // So điểm A với khoảng [min,max] của vùng lân cận bên B (và ngược lại); chỉ báo khi nằm ngoài khoảng đó.
+                let loR = 255, loG = 255, loB = 255, hiR = 0, hiG = 0, hiB = 0;
+                for (let oy = -2; oy <= 2; oy++) {
+                    const yy = y2 + oy;
+                    if (yy < 0 || yy >= hB) continue;
+                    for (let ox = -1; ox <= 1; ox++) {
+                        const xx = x + ox;
+                        if (xx < 0 || xx >= wB) continue;
+                        const q2 = (yy * wB + xx) * 4;
+                        if (dB[q2] < loR) loR = dB[q2]; if (dB[q2] > hiR) hiR = dB[q2];
+                        if (dB[q2 + 1] < loG) loG = dB[q2 + 1]; if (dB[q2 + 1] > hiG) hiG = dB[q2 + 1];
+                        if (dB[q2 + 2] < loB) loB = dB[q2 + 2]; if (dB[q2 + 2] > hiB) hiB = dB[q2 + 2];
+                    }
+                }
+                const T = 35;
+                let same = dA[p] >= loR - T && dA[p] <= hiR + T && dA[p + 1] >= loG - T && dA[p + 1] <= hiG + T && dA[p + 2] >= loB - T && dA[p + 2] <= hiB + T;
+                if (same) {
+                    // chiều ngược lại: điểm B phải nằm trong khoảng của vùng lân cận bên A (bắt được nét/hình chỉ có ở B)
+                    let aloR = 255, aloG = 255, aloB = 255, ahiR = 0, ahiG = 0, ahiB = 0;
+                    for (let oy = -2; oy <= 2; oy++) {
+                        const yy = y + oy;
+                        if (yy < 0 || yy >= h) continue;
+                        for (let ox = -1; ox <= 1; ox++) {
+                            const xx = x + ox;
+                            if (xx < 0 || xx >= w) continue;
+                            const q3 = (yy * w + xx) * 4;
+                            if (dA[q3] < aloR) aloR = dA[q3]; if (dA[q3] > ahiR) ahiR = dA[q3];
+                            if (dA[q3 + 1] < aloG) aloG = dA[q3 + 1]; if (dA[q3 + 1] > ahiG) ahiG = dA[q3 + 1];
+                            if (dA[q3 + 2] < aloB) aloB = dA[q3 + 2]; if (dA[q3 + 2] > ahiB) ahiB = dA[q3 + 2];
+                        }
+                    }
+                    same = dB[q] >= aloR - T && dB[q] <= ahiR + T && dB[q + 1] >= aloG - T && dB[q + 1] <= ahiG + T && dB[q + 2] >= aloB - T && dB[q + 2] <= ahiB + T;
+                }
+                if (!same && Math.abs(bA[p] - bB[q]) + Math.abs(bA[p + 1] - bB[q + 1]) + Math.abs(bA[p + 2] - bB[q + 2]) > 60) cnt[gy + (x / C | 0)]++;
+            }
+        }
+    }
+    // Với mỗi ô nghi khác biệt, thử dịch dọc thêm +-6 điểm ảnh: nếu có độ lệch nào khớp thì coi là cùng nội dung (chỉ bị xê dịch)
+    const cellCount = (gx, gy, off) => {
+        let n = 0;
+        const y0 = gy * C, y1 = Math.min(h, y0 + C), x0 = gx * C, x1 = Math.min(w, x0 + C);
+        for (let y = y0; y < y1; y++) {
+            const y2 = y + shift[y] + off;
+            if (y2 < 0 || y2 >= hB) continue;
+            for (let x = x0; x < x1; x++) {
+                const p = (y * w + x) * 4, q = (y2 * wB + x) * 4;
+                if (Math.abs(dA[p] - dB[q]) + Math.abs(dA[p + 1] - dB[q + 1]) + Math.abs(dA[p + 2] - dB[q + 2]) > 90) n++;
+            }
+        }
+        return n;
+    };
+    for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
+        const i = gy * gw + gx;
+        if (cnt[i] < 3) continue;
+        let best = cnt[i];
+        for (let off = -6; off <= 6 && best >= 3; off++) {
+            if (off === 0) continue;
+            const n = cellCount(gx, gy, off);
+            if (n < best) best = n;
+        }
+        cnt[i] = best;
+    }
+    const ex = new Uint8Array(gw * gh);
+    const mark = (P, isB) => {
+        P.words.forEach(wd => {
+            let yy = wd.y / P.H * h;
+            if (isB) yy -= shift[Math.max(0, Math.min(h - 1, Math.round(yy)))] || 0;
+            const x0 = Math.max(0, Math.floor(wd.x / P.W * w / C) - 1), x1 = Math.min(gw - 1, Math.floor((wd.x + wd.w) / P.W * w / C) + 1);
+            const y0 = Math.max(0, Math.floor(yy / C) - 1), y1 = Math.min(gh - 1, Math.floor((yy + wd.h / P.H * h) / C) + 1);
+            for (let gy = y0; gy <= y1; gy++) for (let gx = x0; gx <= x1; gx++) ex[gy * gw + gx] = 1;
+        });
+    };
+    mark(A, false); mark(B, true);
+    // dải dòng chữ đã được báo là thay đổi: loại khỏi so hình (toàn bề ngang)
+    (textChanges || []).forEach(c => {
+        const band = (r, isB) => {
+            let y0 = r.y * h, y1 = (r.y + r.h) * h;
+            if (isB) { const sh = shift[Math.max(0, Math.min(h - 1, Math.round(y0)))] || 0; y0 -= sh; y1 -= sh; }
+            const g0 = Math.max(0, Math.floor(y0 / C) - 1), g1 = Math.min(gh - 1, Math.floor(y1 / C) + 1);
+            for (let gy = g0; gy <= g1; gy++) for (let gx = 0; gx < gw; gx++) ex[gy * gw + gx] = 1;
+        };
+        (c.bRects || []).forEach(r => band(r, false));
+        (c.aRects || []).forEach(r => band(r, true));
+    });
+    const flag = new Uint8Array(gw * gh);
+    for (let i = 0; i < flag.length; i++) if (cnt[i] >= 3 && !ex[i]) flag[i] = 1;
+    const seen = new Uint8Array(gw * gh), comps = [];
+    for (let i = 0; i < flag.length; i++) {
+        if (!flag[i] || seen[i]) continue;
+        const stack = [i]; seen[i] = 1;
+        let minx = gw, miny = gh, maxx = 0, maxy = 0, n = 0;
+        while (stack.length) {
+            const c = stack.pop(), cx = c % gw, cy = (c / gw) | 0;
+            n++; minx = Math.min(minx, cx); maxx = Math.max(maxx, cx); miny = Math.min(miny, cy); maxy = Math.max(maxy, cy);
+            for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+                const nx = cx + dx, ny = cy + dy;
+                if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+                const ni = ny * gw + nx;
+                if (flag[ni] && !seen[ni]) { seen[ni] = 1; stack.push(ni); }
+            }
+        }
+        if (n >= 3) comps.push({ minx, miny, maxx, maxy, n });
+    }
+    comps.sort((p, q) => q.n - p.n);
+    const dark = (data, ww, x0, y0, x1, y1) => {
+        let d = 0, t = 0;
+        for (let y = y0; y < y1; y += 2) for (let x = x0; x < x1; x += 2) { const p = (y * ww + x) * 4; t++; if (0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2] < 200) d++; }
+        return t ? d / t : 0;
+    };
+    return comps.slice(0, 20).map(c => {
+        const x0 = Math.max(0, (c.minx - 1) * C), y0 = Math.max(0, (c.miny - 1) * C);
+        const x1 = Math.min(w, (c.maxx + 2) * C), y1 = Math.min(h, (c.maxy + 2) * C);
+        const ys = Math.max(0, Math.min(hB - 1, Math.round((y0 + y1) / 2) + (shift[Math.min(h - 1, Math.round((y0 + y1) / 2))] || 0)));
+        const dy = ys - Math.round((y0 + y1) / 2);
+        const by0 = Math.max(0, Math.min(hB - 1, y0 + dy)), by1 = Math.max(by0 + 1, Math.min(hB, y1 + dy));
+        const fa = dark(dA, w, x0, y0, x1, y1), fb = dark(dB, wB, x0, by0, x1, by1);
+        let label = 'Hình/đồ họa khác nhau';
+        if (fa < 0.01 && fb >= 0.01) label = 'Thêm hình/đồ họa'; else if (fb < 0.01 && fa >= 0.01) label = 'Mất hình/đồ họa';
+        return {
+            type: 'visual', label: label, before: '', after: '',
+            bRects: [{ x: x0 / w, y: y0 / h, w: (x1 - x0) / w, h: (y1 - y0) / h }],
+            aRects: [{ x: x0 / w, y: by0 / hB, w: (x1 - x0) / w, h: (by1 - by0) / hB }]
+        };
+    });
+}
+
+async function cmpGetResult(idx) {
+    let res = CMP.results[idx];
+    if (res) return res;
+    const pair = CMP.pairs[idx];
+    res = { idx: idx, pair: pair, text: [], visual: null, changes: [] };
+    if (pair.l && !pair.r) res.text = [{ type: 'page', label: 'Trang chỉ có ở File A', before: 'Trang ' + pair.l + ' không có trong File B', after: '', bRects: [], aRects: [] }];
+    else if (!pair.l && pair.r) res.text = [{ type: 'page', label: 'Trang chỉ có ở File B', before: '', after: 'Trang ' + pair.r + ' không có trong File A', bRects: [], aRects: [] }];
+    else {
+        const A = await cmpGetWords(compareDoc1, pair.l), B = await cmpGetWords(compareDoc2, pair.r);
+        res.A = A; res.B = B;
+        const tr = cmpTextChanges(A, B);
+        res.text = tr.changes; res.anchors = tr.anchors;
+    }
+    CMP.results[idx] = res;
+    cmpFinalize(res);
+    return res;
+}
+
+function cmpFinalize(res) {
+    res.changes = res.text.concat(res.visual || []);
+    res.changes.forEach((c, i) => { c.id = res.idx + '-' + i; });
+}
+
+async function cmpComputeVisual(res, cvA, cvB) {
+    if (res.visual || !res.A || !res.B) return;
+    res.visual = cmpVisualChanges(cvA, cvB, res.A, res.B, res.anchors, res.text);
+    cmpFinalize(res);
+}
+
+async function cmpBackgroundVisual(res) {
+    const pair = res.pair;
+    if (res.visual || !pair.l || !pair.r) return;
+    const mk = async (doc, no) => {
+        const page = await doc.getPage(no), vp = page.getViewport({ scale: CMP.scale });
+        const cv = document.createElement('canvas');
+        cv.width = Math.ceil(vp.width); cv.height = Math.ceil(vp.height);
+        await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+        return cv;
+    };
+    const cvA = await mk(compareDoc1, pair.l), cvB = await mk(compareDoc2, pair.r);
+    if (!res.visual) await cmpComputeVisual(res, cvA, cvB);
+    cvA.width = 0; cvB.width = 0;
+}
+
+async function cmpStartBackground() {
+    const token = ++CMP.bgToken;
+    const total = CMP.pairs.length;
+    const doVisual = total <= 60;
+    for (let i = 0; i < total; i++) {
+        if (token !== CMP.bgToken) return;
+        try {
+            const res = await cmpGetResult(i);
+            if (doVisual) await cmpBackgroundVisual(res);
+        } catch (e) { console.warn('So sánh nền lỗi ở cặp ' + (i + 1), e); }
+        CMP.bgDone = i + 1;
+        if (token === CMP.bgToken) cmpRenderPanel();
+        await new Promise(r => setTimeout(r, 0));
+    }
+    CMP.bgDone = total;
+    if (token === CMP.bgToken) cmpRenderPanel();
+}
+
+// ---------- Hiển thị ----------
+function cmpEsc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function cmpShort(s, n) { s = String(s); return s.length > n ? s.slice(0, n) + '…' : s; }
+function cmpLabelOf(c) { return c.label || CMP_LABEL[c.type] || c.type; }
+
+function cmpDrawHighlights() {
+    document.querySelectorAll('.cmp-hl-layer').forEach(n => n.remove());
+    const res = CMP.results[currentComparePage - 1];
+    const auto = document.getElementById('cmp-auto');
+    if (!res || (auto && !auto.checked)) return;
+    const addLayer = (host, side) => {
+        if (!host) return;
+        const layer = document.createElement('div');
+        layer.className = 'cmp-hl-layer';
+        res.changes.forEach(c => {
+            const rects = side === 'A' ? c.bRects : (side === 'B' ? c.aRects : c.bRects.concat(c.aRects));
+            rects.forEach((r, ri) => {
+                const col = CMP_COLORS[c.type] || '#64748b';
+                const box = document.createElement('div');
+                box.className = 'cmp-hl-box';
+                box.setAttribute('data-cid', c.id);
+                box.style.cssText = 'left:' + (r.x * 100) + '%;top:' + (r.y * 100) + '%;width:' + (r.w * 100) + '%;height:' + (r.h * 100) + '%;background:' + col + '47;border-color:' + col + ';';
+                if (side === 'O' && ri < c.bRects.length && c.aRects.length) box.style.borderStyle = 'dashed';
+                box.title = cmpLabelOf(c) + (c.before ? ': ' + cmpShort(c.before, 80) : '') + (c.after && c.type !== 'style' ? ' → ' + cmpShort(c.after, 80) : '');
+                box.addEventListener('click', () => cmpFocusChange(c.id, true));
+                layer.appendChild(box);
+            });
+        });
+        host.appendChild(layer);
+    };
+    addLayer(CMP.wrapA, 'A');
+    addLayer(CMP.wrapB, 'B');
+    addLayer(CMP.wrapO, 'O');
+}
+
+function cmpRenderPanel() {
+    const listEl = document.getElementById('cmp-list'), glob = document.getElementById('cmp-global'), info = document.getElementById('cmp-pairinfo');
+    if (!listEl || !CMP.pairs) return;
+    const idx = currentComparePage - 1, pair = CMP.pairs[idx];
+    if (info && pair) {
+        info.textContent = (pair.l ? 'File A: trang ' + pair.l : 'File A: (không có)') + '  ↔  ' + (pair.r ? 'File B: trang ' + pair.r : 'File B: (không có)') + (pair.l && pair.r ? ' • độ giống ' + Math.round(pair.conf * 100) + '%' : '');
+    }
+    // tổng quan
+    let totalChanges = 0, pagesWith = [];
+    for (let i = 0; i < CMP.pairs.length; i++) {
+        const r = CMP.results[i];
+        if (r && r.changes.length) { totalChanges += r.changes.length; pagesWith.push({ i: i, n: r.changes.length }); }
+    }
+    const done = CMP.bgDone || 0, total = CMP.pairs.length, finished = done >= total;
+    let g = '';
+    if (!compareDoc1 || !compareDoc2) g = 'Chọn đủ File A và File B để tự động phát hiện khác biệt.';
+    else if (!finished) g = 'Đang phân tích ' + done + '/' + total + ' trang... Đã thấy ' + totalChanges + ' khác biệt.';
+    else if (!totalChanges) g = '✓ Không phát hiện khác biệt nào giữa hai file.';
+    else g = '⚠ Phát hiện ' + totalChanges + ' khác biệt ở ' + pagesWith.length + '/' + total + ' trang.';
+    glob.innerHTML = '<div style="font-weight:600; margin-bottom:4px;">' + cmpEsc(g) + '</div>' +
+        (pagesWith.length ? '<div style="display:flex; flex-wrap:wrap; gap:4px;">' + pagesWith.slice(0, 80).map(p => '<button class="btn btn-small" style="padding:2px 7px;' + (p.i === idx ? 'background:#f59e0b;' : '') + '" onclick="cmpGoPair(' + p.i + ')" title="' + p.n + ' khác biệt">Cặp ' + (p.i + 1) + ' (' + p.n + ')</button>').join('') + '</div>' : '');
+    // danh sách của trang đang xem
+    const res = CMP.results[idx];
+    if (!res) { listEl.innerHTML = '<div class="editor-hint">Đang phân tích trang này...</div>'; return; }
+    if (!res.changes.length) { listEl.innerHTML = '<div class="editor-hint" style="color:#107c41;">✓ Trang này giống nhau.</div>'; return; }
+    listEl.innerHTML = res.changes.map(c => {
+        const col = CMP_COLORS[c.type] || '#64748b';
+        let body = '';
+        if (c.type === 'modified' || c.type === 'moved') body = '<s style="opacity:.7">' + cmpEsc(cmpShort(c.before, 60)) + '</s> → <b>' + cmpEsc(cmpShort(c.after, 60)) + '</b>';
+        else if (c.type === 'removed') body = '<s style="opacity:.7">' + cmpEsc(cmpShort(c.before, 90)) + '</s>';
+        else if (c.type === 'added') body = '<b>' + cmpEsc(cmpShort(c.after, 90)) + '</b>';
+        else if (c.type === 'style') body = cmpEsc(cmpShort(c.before, 40)) + ' (' + cmpEsc(c.after) + ')';
+        else body = cmpEsc(c.before || c.after || '');
+        return '<div class="cmp-row' + (CMP.activeId === c.id ? ' active' : '') + '" data-cid="' + c.id + '" onclick="cmpFocusChange(\'' + c.id + '\')">' +
+            '<span class="cmp-dot" style="background:' + col + '"></span><div style="min-width:0;"><div style="font-size:11px; font-weight:700; color:' + col + ';">' + cmpEsc(cmpLabelOf(c)) + '</div><div style="font-size:12px; word-break:break-word;">' + body + '</div></div></div>';
+    }).join('');
+}
+
+function cmpFocusChange(id, fromBox) {
+    CMP.activeId = id;
+    document.querySelectorAll('.cmp-row').forEach(r => r.classList.toggle('active', r.getAttribute('data-cid') === id));
+    const boxes = Array.from(document.querySelectorAll('.cmp-hl-box[data-cid="' + id + '"]'));
+    boxes.forEach(b => { b.classList.remove('cmp-flash'); void b.offsetWidth; b.classList.add('cmp-flash'); });
+    const overlay = document.getElementById('overlay-mode').checked;
+    const visibleBoxes = boxes.filter(b => b.offsetParent !== null);
+    visibleBoxes.forEach(b => {
+        const pane = b.closest('.compare-pane') || b.closest('.overlay-container');
+        if (!pane) return;
+        const pr = pane.getBoundingClientRect(), br = b.getBoundingClientRect();
+        pane.scrollTop += (br.top - pr.top) - pane.clientHeight / 3;
+        pane.scrollLeft += (br.left - pr.left) - pane.clientWidth / 3;
+    });
+    if (fromBox) {
+        const row = document.querySelector('.cmp-row[data-cid="' + id + '"]');
+        if (row) row.scrollIntoView({ block: 'nearest' });
+    }
+}
+
+function cmpGoPair(i) {
+    currentComparePage = i + 1;
+    renderCompare();
+}
+
+async function cmpNavDiff(dir) {
+    if (!CMP.pairs) return;
+    const flat = [];
+    CMP.pairs.forEach((p, i) => { const r = CMP.results[i]; if (r) r.changes.forEach(c => flat.push(c.id)); });
+    if (!flat.length) return;
+    let cur = flat.indexOf(CMP.activeId);
+    if (cur < 0) {
+        const pageIds = flat.filter(id => id.indexOf((currentComparePage - 1) + '-') === 0);
+        cur = dir > 0 ? (pageIds.length ? flat.indexOf(pageIds[0]) - 1 : -1) : (pageIds.length ? flat.indexOf(pageIds[0]) : flat.length);
+    }
+    const nxt = flat[(cur + dir + flat.length) % flat.length];
+    const pi = parseInt(nxt.split('-')[0], 10);
+    if (pi !== currentComparePage - 1) {
+        CMP.pendingFocus = nxt;
+        currentComparePage = pi + 1;
+        await renderCompare();
+    } else {
+        cmpFocusChange(nxt);
+    }
+}
+
+function cmpToggleAuto() { cmpDrawHighlights(); }
+
 async function renderCompare() {
     if (!compareDoc1 && !compareDoc2) return;
     const taskId = ++compareRenderTaskId;
-    document.getElementById('compare-page-indicator').innerText = `${currentComparePage} / ${maxComparePages}`;
+    const indicator = document.getElementById('compare-page-indicator');
     const pane1 = document.getElementById('compare-pane-1'), pane2 = document.getElementById('compare-pane-2'), wrapperContent = document.getElementById('overlay-wrapper-content');
+    const glob = document.getElementById('cmp-global');
+    if (glob && !CMP.pairs) glob.textContent = 'Đang phân tích và ghép trang...';
+    await ensureComparePairs();
+    if (taskId !== compareRenderTaskId) return;
+    indicator.innerText = `${currentComparePage} / ${maxComparePages}`;
+    const pair = CMP.pairs[currentComparePage - 1];
     pane1.innerHTML = '';
     pane2.innerHTML = '';
     wrapperContent.innerHTML = '';
-    const scaleFactor = 1.3;
-    if (compareDoc1 && currentComparePage <= compareDoc1.numPages) {
-        const pageA = await compareDoc1.getPage(currentComparePage);
+    CMP.wrapA = CMP.wrapB = null;
+    CMP.wrapO = wrapperContent;
+    if (!pair) return;
+    const scaleFactor = CMP.scale;
+    const tasks = [];
+    let canvasA = null, canvasB = null;
+    const placeholder = (pane, txt) => { pane.innerHTML = '<div style="color:gray; font-style:italic; margin-top:40px;">' + txt + '</div>'; };
+    if (pair.l && compareDoc1) {
+        const pageA = await compareDoc1.getPage(pair.l);
         if (taskId !== compareRenderTaskId) return;
-        const vpA = pageA.getViewport({
-            scale: scaleFactor
-        });
-        let canvasA = document.createElement('canvas');
+        const vpA = pageA.getViewport({ scale: scaleFactor });
+        const wrap = document.createElement('div');
+        wrap.className = 'cmp-page';
+        canvasA = document.createElement('canvas');
         canvasA.height = vpA.height;
         canvasA.width = vpA.width;
-        pane1.appendChild(canvasA);
-        pageA.render({
-            canvasContext: canvasA.getContext('2d'),
-            viewport: vpA
-        });
+        wrap.appendChild(canvasA);
+        pane1.appendChild(wrap);
+        CMP.wrapA = wrap;
+        tasks.push(pageA.render({ canvasContext: canvasA.getContext('2d'), viewport: vpA }).promise);
         const canvasOverlayA = document.createElement('canvas');
         canvasOverlayA.id = 'canvas-overlay-A';
         canvasOverlayA.className = 'overlay-canvas';
         canvasOverlayA.height = vpA.height;
         canvasOverlayA.width = vpA.width;
         wrapperContent.appendChild(canvasOverlayA);
-        pageA.render({
-            canvasContext: canvasOverlayA.getContext('2d'),
-            viewport: vpA
-        });
-    }
-    if (compareDoc2 && currentComparePage <= compareDoc2.numPages) {
-        const pageB = await compareDoc2.getPage(currentComparePage);
+        tasks.push(pageA.render({ canvasContext: canvasOverlayA.getContext('2d'), viewport: vpA }).promise);
+    } else placeholder(pane1, compareDoc1 ? 'File A không có trang tương ứng.' : 'Đang chờ File A...');
+    if (pair.r && compareDoc2) {
+        const pageB = await compareDoc2.getPage(pair.r);
         if (taskId !== compareRenderTaskId) return;
-        const vpB = pageB.getViewport({
-            scale: scaleFactor
-        });
-        let canvasB = document.createElement('canvas');
+        const vpB = pageB.getViewport({ scale: scaleFactor });
+        const wrap = document.createElement('div');
+        wrap.className = 'cmp-page';
+        canvasB = document.createElement('canvas');
         canvasB.height = vpB.height;
         canvasB.width = vpB.width;
-        pane2.appendChild(canvasB);
-        pageB.render({
-            canvasContext: canvasB.getContext('2d'),
-            viewport: vpB
-        });
+        wrap.appendChild(canvasB);
+        pane2.appendChild(wrap);
+        CMP.wrapB = wrap;
+        tasks.push(pageB.render({ canvasContext: canvasB.getContext('2d'), viewport: vpB }).promise);
         const canvasOverlayB = document.createElement('canvas');
         canvasOverlayB.id = 'canvas-overlay-B';
         canvasOverlayB.className = 'overlay-canvas';
         canvasOverlayB.height = vpB.height;
         canvasOverlayB.width = vpB.width;
         wrapperContent.appendChild(canvasOverlayB);
-        pageB.render({
-            canvasContext: canvasOverlayB.getContext('2d'),
-            viewport: vpB
-        });
-    }
+        tasks.push(pageB.render({ canvasContext: canvasOverlayB.getContext('2d'), viewport: vpB }).promise);
+    } else placeholder(pane2, compareDoc2 ? 'File B không có trang tương ứng.' : 'Đang chờ File B...');
     applyViewFilter(document.querySelector('input[name="view-filter"]:checked').value);
+    try {
+        const res = await cmpGetResult(currentComparePage - 1);
+        if (taskId !== compareRenderTaskId) return;
+        cmpDrawHighlights();
+        cmpRenderPanel();
+        await Promise.all(tasks);
+        if (taskId !== compareRenderTaskId) return;
+        if (canvasA && canvasB && !res.visual) {
+            await cmpComputeVisual(res, canvasA, canvasB);
+            if (taskId !== compareRenderTaskId) return;
+            cmpDrawHighlights();
+            cmpRenderPanel();
+        }
+        if (CMP.pendingFocus) { const f = CMP.pendingFocus; CMP.pendingFocus = null; cmpFocusChange(f); }
+    } catch (e) {
+        console.error('Lỗi so sánh tự động:', e);
+    }
 }
 
 let isSyncingScroll = false;
